@@ -1,0 +1,177 @@
+{
+  "entities": {
+    "ExpenseCategory": {
+      "title": "ExpenseCategory",
+      "description": "Category for business or personal expenses",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "icon": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "name"]
+    },
+    "Expense": {
+      "title": "Expense",
+      "description": "Daily expense record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "categoryId": { "type": "string" },
+        "date": { "type": "string" },
+        "amount": { "type": "number" },
+        "note": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "categoryId", "date", "amount"]
+    },
+    "Log": {
+      "title": "Log",
+      "description": "System activity log",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "action": { "type": "string" },
+        "details": { "type": "string" },
+        "type": { "type": "string" }
+      },
+      "required": ["id"]
+    },
+    "Member": {
+      "title": "Member",
+      "description": "Rider or shop member",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "class": { "type": "string" },
+        "phone": { "type": "string" },
+        "address": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "name"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "Ice cream or shop item",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "type": { "type": "string" },
+        "category": { "type": "string" },
+        "priceIn": { "type": "number" },
+        "priceOut": { "type": "number" },
+        "priceWalkIn": { "type": "number" },
+        "sortOrder": { "type": "number" },
+        "imageUrl": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "name"]
+    },
+    "Bill": {
+      "title": "Bill",
+      "description": "Sales ledger bill",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "memberId": { "type": "string" },
+        "memberName": { "type": "string" },
+        "buyerName": { "type": "string" },
+        "date": { "type": "string" },
+        "ice": { "type": "string" },
+        "icePrice": { "type": "number" },
+        "totalSales": { "type": "number" },
+        "amountPaid": { "type": "number" },
+        "amountOwed": { "type": "number" },
+        "previousOwed": { "type": "number" },
+        "notes": { "type": "string" },
+        "status": { "type": "string" },
+        "dayClosed": { "type": "boolean" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "memberId", "date"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Supply order record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "date": { "type": "string" },
+        "totalOrderAmount": { "type": "number" },
+        "marginAmount": { "type": "number" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "date"]
+    },
+    "User": {
+      "title": "User",
+      "description": "App system user or rider account",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "phone": { "type": "string" },
+        "name": { "type": "string" },
+        "role": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "phone", "name", "role"]
+    },
+    "Settings": {
+      "title": "Settings",
+      "description": "App settings",
+      "type": "object",
+      "properties": {
+        "retentionMonths": { "type": "number" },
+        "reminderExport": { "type": "boolean" },
+        "lastExportDate": { "type": "string" },
+        "lastCleanup": { "type": "string" }
+      }
+    }
+  },
+  "firestore": {
+    "/expenseCategories/{id}": {
+      "schema": "ExpenseCategory",
+      "description": "Expense categories collection"
+    },
+    "/expenses/{id}": {
+      "schema": "Expense",
+      "description": "Expenses collection"
+    },
+    "/logs/{id}": {
+      "schema": "Log",
+      "description": "Activity logs collection"
+    },
+    "/members/{id}": {
+      "schema": "Member",
+      "description": "Riders / members collection"
+    },
+    "/products/{id}": {
+      "schema": "Product",
+      "description": "Products catalog collection"
+    },
+    "/bills/{id}": {
+      "schema": "Bill",
+      "description": "Daily bills collection"
+    },
+    "/orders/{id}": {
+      "schema": "Order",
+      "description": "Supply orders collection"
+    },
+    "/users/{id}": {
+      "schema": "User",
+      "description": "App users collection"
+    },
+    "/settings/{id}": {
+      "schema": "Settings",
+      "description": "System settings document"
+    }
+  }
+}

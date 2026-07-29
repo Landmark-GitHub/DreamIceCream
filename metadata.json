@@ -1,0 +1,6 @@
+{
+  "name": "Ledger & Expense Manager",
+  "description": "App for tracking transactions, expenses, bills, and products",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
