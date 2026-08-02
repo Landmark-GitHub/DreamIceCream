@@ -37,7 +37,9 @@ import {
   Image as ImageIcon,
   Settings2,
   RefreshCw,
+  Database,
 } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
 import { BatchExportJPGDialog } from '@/components/data/batch-export-dialog';
 
 export default function DataManagementPage() {
@@ -567,6 +569,36 @@ export default function DataManagementPage() {
   const monthBills = bills.filter((b) => b.date.startsWith(selectedMonth)).length;
   const totalSales = bills.reduce((sum, b) => sum + b.totalSales, 0);
 
+  // Data Size Calculation
+  const calculateTotalSize = () => {
+    try {
+      const str = JSON.stringify({
+        bills,
+        products,
+        members,
+        expenses,
+        expenseCategories,
+        settings,
+        supplyOrders
+      });
+      return new Blob([str]).size;
+    } catch (e) {
+      return 0;
+    }
+  };
+
+  const totalSizeBytes = calculateTotalSize();
+  const maxSizeBytes = 1.1 * 1024 * 1024 * 1024; // 1.1 GB
+  const sizePercentage = Math.min((totalSizeBytes / maxSizeBytes) * 100, 100);
+  
+  const formatBytes = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
   return (
     <main className="min-h-screen bg-background">
       {/* Header */}
@@ -605,6 +637,21 @@ export default function DataManagementPage() {
               <p className="text-xs text-muted-foreground">ยอดขายรวม (บาท)</p>
             </div>
           </CardContent>
+          <div className="px-6 pb-6 space-y-3">
+            <div className="flex items-center justify-between text-sm">
+              <span className="flex items-center gap-1.5 text-muted-foreground">
+                <Database className="w-4 h-4" />
+                พื้นที่เก็บข้อมูล
+              </span>
+              <span className="font-medium text-foreground">
+                {formatBytes(totalSizeBytes)} / 1.1 GB
+              </span>
+            </div>
+            <Progress value={sizePercentage} className="h-2" />
+            <p className="text-xs text-muted-foreground text-right">
+              ใช้ไป {sizePercentage.toFixed(4)}%
+            </p>
+          </div>
         </Card>
 
         {/* Export Section */}
