@@ -101,8 +101,8 @@ export function BillPrintPreviewDialog({
             ref={printAreaRef}
             className="bg-white shadow-md border border-neutral-200 shrink-0 my-2 overflow-hidden"
             style={{
-              width: mode === 'checkout' ? '280px' : '100%',
-              maxWidth: mode === 'checkout' ? '280px' : '100%',
+              width: mode === 'checkout' ? '350px' : '100%',
+              maxWidth: mode === 'checkout' ? '350px' : '100%',
               minHeight: '200px',
             }}
           >
@@ -149,7 +149,7 @@ export function BillPrintPreviewDialog({
   );
 }
 
-function BillReceiptContent({
+export function BillReceiptContent({
   mode,
   bill,
   products,
@@ -206,7 +206,7 @@ function BillReceiptContent({
         <div
           className={cn(
             'border-b border-dashed border-neutral-300 pb-1 font-bold grid text-neutral-700 text-xs',
-            mode === 'checkout' ? 'grid-cols-12' : 'grid-cols-14'
+            mode === 'checkout' ? 'grid-cols-18' : 'grid-cols-18'
           )}
         >
           {mode === 'checkout' ? (
@@ -219,6 +219,8 @@ function BillReceiptContent({
           ) : (
             <>
               <div className="col-span-4">รายการสินค้า</div>
+              <div className="col-span-2 text-right">เก่า</div>
+              <div className="col-span-2 text-right">ใหม่</div>
               <div className="col-span-2 text-right">รวม</div>
               <div className="col-span-2 text-right">เหลือ</div>
               <div className="col-span-2 text-right">ขาย</div>
@@ -407,6 +409,9 @@ function ReceiptLineItems({
         const tp = products.filter((p) => p.type === type);
         const ti =
           bill?.items.filter((item) => tp.some((p) => p.id === item.productId)) || [];
+        // คำนวณยอดยกมา ยอดใหม่ และยอดรวม
+        const oldStock = ti.reduce((s, i) => s + (i.oldStock || 0), 0); // ยอดยกมา (เก่า)
+        const newStock = ti.reduce((s, i) => s + (i.newStock || 0), 0); // ยอดเบิกเพิ่ม (ใหม่)
         const typeStock = ti.reduce((s, i) => s + i.totalStock, 0);
         if (typeStock === 0) return null;
         const returnedInput = bill?.returnInputs?.[type] ?? 0;
@@ -419,9 +424,11 @@ function ReceiptLineItems({
         return (
           <div
             key={type}
-            className="grid grid-cols-14 gap-0 items-center text-sm gap-y-0.5 border-b border-neutral-100 pb-1 last:border-0"
+            className="grid grid-cols-18 gap-0 text-[10px] items-center text-sm gap-y-0.5 border-b border-neutral-100 pb-1 last:border-0"
           >
             <div className="col-span-4 font-medium truncate">{typeLabel}</div>
+            <div className="col-span-2 text-right text-neutral-400">{oldStock}</div>
+            <div className="col-span-2 text-right text-neutral-400">{newStock}</div>
             <div className="col-span-2 text-right text-neutral-500">{typeStock}</div>
             <div className="col-span-2 text-right text-neutral-500">{returnedInput}</div>
             <div className="col-span-2 text-right font-semibold">

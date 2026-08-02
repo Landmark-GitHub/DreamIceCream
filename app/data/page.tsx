@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useStore } from '@/lib/store';
 import { getCurrentMonth, PRODUCT_TYPE_LABELS } from '@/lib/types';
+import { db } from '@/lib/firebase';
+import { collection, getDocs } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -29,13 +31,14 @@ import {
   ChevronLeft,
   Download,
   Trash2,
-  RefreshCw,
-  Settings2,
   AlertTriangle,
   FileSpreadsheet,
   FileJson,
-  FlaskConical,
+  Image as ImageIcon,
+  Settings2,
+  RefreshCw,
 } from 'lucide-react';
+import { BatchExportJPGDialog } from '@/components/data/batch-export-dialog';
 
 export default function DataManagementPage() {
   const {
@@ -45,53 +48,60 @@ export default function DataManagementPage() {
     expenses,
     expenseCategories,
     settings,
-    runAutoCleanup,
     updateSettings,
+    runAutoCleanup,
     resetAll,
   } = useStore();
 
+  const getMonthsToDelete = () => {
+    const cutoffDate = new Date();
+    cutoffDate.setMonth(cutoffDate.getMonth() - settings.retentionMonths);
+    const cutoffMonth = cutoffDate.toISOString().slice(0, 7);
+    const billsToDelete = [...new Set(bills.filter(b => b.date.slice(0, 7) < cutoffMonth).map(b => b.date.slice(0, 7)))];
+    const expensesToDelete = [...new Set(expenses.filter(e => e.date.slice(0, 7) < cutoffMonth).map(e => e.date.slice(0, 7)))];
+    return { bills: billsToDelete, expenses: expensesToDelete };
+  };
+
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
   const [selectedExpenseMonth, setSelectedExpenseMonth] = useState(getCurrentMonth());
+  const [selectedSupplyMonth, setSelectedSupplyMonth] = useState(getCurrentMonth());
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [confirmText, setConfirmText] = useState('');
+  const [showBatchExport, setShowBatchExport] = useState(false);
   const [showCleanupConfirm, setShowCleanupConfirm] = useState(false);
+  const [supplyOrders, setSupplyOrders] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        const snap = await getDocs(collection(db, 'orders'));
+        setSupplyOrders(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      } catch (err) {
+        console.error('Failed to load supply orders:', err);
+      }
+    };
+    fetchOrders();
+  }, []);
 
   // Cleanup pre-download tracking
   const [monthsToDelete, setMonthsToDelete] = useState<{ bills: string[]; expenses: string[] }>({ bills: [], expenses: [] });
   const [downloadedBillMonths, setDownloadedBillMonths] = useState<Set<string>>(new Set());
   const [downloadedExpenseMonths, setDownloadedExpenseMonths] = useState<Set<string>>(new Set());
 
-  // Get available months from bills / expenses
-  const availableMonths = [...new Set(bills.map((b) => b.date.slice(0, 7)))].sort().reverse();
-  const availableExpenseMonths = [...new Set(expenses.map((e) => e.date.slice(0, 7)))].sort().reverse();
-
-  // คำนวณเดือนที่จะถูกลบเมื่อ cleanup
-  const getMonthsToDelete = () => {
-    const cutoffDate = new Date();
-    cutoffDate.setMonth(cutoffDate.getMonth() - settings.retentionMonths);
-    const cutoffMonth = cutoffDate.toISOString().slice(0, 7);
-    const billMonths = [...new Set(bills.filter((b) => b.date.slice(0, 7) < cutoffMonth).map((b) => b.date.slice(0, 7)))].sort();
-    const expenseMonths = [...new Set(expenses.filter((e) => e.date.slice(0, 7) < cutoffMonth).map((e) => e.date.slice(0, 7)))].sort();
-    return { bills: billMonths, expenses: expenseMonths };
-  };
-
-  // ตรวจสอบว่า download ครบทุกเดือนที่จะถูกลบแล้วหรือยัง
+    // ตรวจสอบว่า download ครบทุกเดือนที่จะถูกลบแล้วหรือยัง
   const allDownloaded =
     monthsToDelete.bills.every((m) => downloadedBillMonths.has(m)) &&
     monthsToDelete.expenses.every((m) => downloadedExpenseMonths.has(m));
 
   const hasAnythingToDelete = monthsToDelete.bills.length > 0 || monthsToDelete.expenses.length > 0;
 
-  // Auto cleanup check on mount
-  useEffect(() => {
-    const today = new Date().toISOString().split('T')[0];
-    const store = useStore.getState();
-    if (store.lastCleanup !== today) {
-      // Will be triggered on next interaction
-    }
-  }, []);
+  // Get available months from bills & expenses
+  const availableMonths = [...new Set(bills.map((b) => b.date.slice(0, 7)))].sort().reverse();
+  const availableExpenseMonths = [...new Set(expenses.map((e) => e.date.slice(0, 7)))].sort().reverse();
+  const availableSupplyMonths = [...new Set(supplyOrders.map((o) => o.date.slice(0, 7)))].sort().reverse();
 
-  // Helper functions
+  
+  
   const formatDateThai = (dateStr: string): string => {
     const date = new Date(dateStr + 'T00:00:00');
     return date.toLocaleDateString('th-TH', {
@@ -101,26 +111,25 @@ export default function DataManagementPage() {
       weekday: 'short',
     });
   };
-
   const getStatusLabel = (status: string): string => {
     switch (status) {
-      case 'draft': return 'กำลังเบิก';
-      case 'checkout': return 'เบิกแล้ว';
-      case 'completed': return 'ปิดวันแล้ว';
-      default: return status;
+      case 'draft':
+        return 'กำลังเบิก';
+      case 'checkout':
+        return 'เบิกแล้ว';
+      case 'completed':
+        return 'ปิดวันแล้ว';
+      default:
+        return status;
     }
   };
-
-  // Improved CSV Export
   const handleExportCSV = () => {
-    const filteredBills = bills.filter((b) => b.date.startsWith(selectedMonth));
-    
+    const filteredBills = selectedMonth === 'all' ? bills : bills.filter((b) => b.date.startsWith(selectedMonth));
     if (filteredBills.length === 0) {
       alert('ไม่มีข้อมูลในเดือนที่เลือก');
       return;
     }
 
-    // CSV Header - Thai labels matching frontend display
     const headers = [
       'วันที่',
       'ชื่อสมาชิก',
@@ -138,52 +147,44 @@ export default function DataManagementPage() {
       'ค้างเก่า (บาท)',
       'ค้างชำระ (บาท)',
       'หมายเหตุ',
-      'สถานะ'
+      'สถานะ',
     ];
-    
+
     const rows: string[][] = [];
-    
-    // Sort bills by date
-    const sortedBills = [...filteredBills].sort((a, b) => a.date.localeCompare(b.date));
-    
+    const sortedBills = [...filteredBills].sort((a, b) => b.date.localeCompare(a.date));
+
     sortedBills.forEach((bill) => {
       let isFirstItem = true;
-      
-      // Group items by type for better readability
-      const productTypes = Array.from(new Set(products.map(p => p.type)));
-      
+      const productTypes = Array.from(new Set(products.map((p) => p.type)));
+
       productTypes.forEach((type) => {
-        // Skip special types
         if (type === 'Car' || type === 'House' || type === 'D') return;
-        
-        const typeProducts = products.filter(p => p.type === type);
-        const typeItems = bill.items.filter(item => 
-          typeProducts.some(p => p.id === item.productId) && 
-          (item.totalStock > 0 || item.newStock > 0)
+        const typeProducts = products.filter((p) => p.type === type);
+        const typeItems = bill.items.filter(
+          (item) =>
+            typeProducts.some((p) => p.id === item.productId) &&
+            (item.totalStock > 0 || item.newStock > 0)
         );
-        
+
         if (typeItems.length === 0) return;
-        
-        // Calculate type totals
-        const typeOldStock = typeItems.reduce((sum, i) => sum + i.oldStock, 0);
-        const typeNewStock = typeItems.reduce((sum, i) => sum + i.newStock, 0);
+
+        const typeOldStock = typeItems.reduce((sum, i) => sum + (i.oldStock || 0), 0);
+        const typeNewStock = typeItems.reduce((sum, i) => sum + (i.newStock || 0), 0);
         const typeTotalStock = typeItems.reduce((sum, i) => sum + i.totalStock, 0);
         const typeReturned = bill.returnInputs?.[type] || 0;
         const typeSold = Math.max(0, typeTotalStock - typeReturned);
-        
-        // Get price based on member class
-        const member = members.find(m => m.id === bill.memberId);
+
+        const member = members.find((m) => m.id === bill.memberId);
         const memberClass = member?.class ?? 'In';
         const baseProduct = typeProducts[0];
         let price = 0;
         if (memberClass === 'Out') price = baseProduct?.priceOut || 0;
         else if (memberClass === 'WalkIn') price = baseProduct?.priceWalkIn || 0;
         else price = baseProduct?.priceIn || 0;
-        
+
         const typeSubtotal = typeSold * price;
-        
         const typeName = PRODUCT_TYPE_LABELS[type as keyof typeof PRODUCT_TYPE_LABELS] || type;
-        
+
         rows.push([
           isFirstItem ? formatDateThai(bill.date) : '',
           isFirstItem ? bill.memberName : '',
@@ -200,21 +201,21 @@ export default function DataManagementPage() {
           isFirstItem ? Math.round(bill.amountPaid).toLocaleString() : '',
           isFirstItem ? Math.round(bill.previousOwed || 0).toLocaleString() : '',
           isFirstItem ? Math.round(bill.amountOwed).toLocaleString() : '',
-          isFirstItem ? (bill.notes || '-') : '',
+          isFirstItem ? bill.notes || '-' : '',
           isFirstItem ? getStatusLabel(bill.status) : '',
         ]);
-        
+
         isFirstItem = false;
       });
-      
-      // Add empty row between bills for readability
+
       if (!isFirstItem) {
         rows.push(Array(headers.length).fill(''));
       }
     });
-    
-    const csv = [headers.join(','), ...rows.map((r) => r.map((cell) => `"${cell}"`).join(','))].join('\n');
 
+    const csv = [headers.join(','), ...rows.map((r) => r.map((cell) => `"${cell}"`).join(','))].join(
+      '\n'
+    );
     const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -225,7 +226,6 @@ export default function DataManagementPage() {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
-
   const handleExportJSON = () => {
     const state = useStore.getState();
     const dataStr = JSON.stringify(
@@ -233,6 +233,7 @@ export default function DataManagementPage() {
         members: state.members,
         products: state.products,
         bills: state.bills.filter((b) => b.date.startsWith(selectedMonth)),
+        expenses: state.expenses.filter((e) => e.date.startsWith(selectedMonth)),
         exportedAt: new Date().toISOString(),
       },
       null,
@@ -249,19 +250,28 @@ export default function DataManagementPage() {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
-
   const handleExportExpensesCSV = () => {
     const monthExpenses = expenses
-      .filter((e) => e.date.startsWith(selectedExpenseMonth))
-      .sort((a, b) => a.date.localeCompare(b.date) || a.createdAt.localeCompare(b.createdAt));
+      .filter((e) => selectedExpenseMonth === 'all' || e.date.startsWith(selectedExpenseMonth))
+      .sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt));
 
     if (monthExpenses.length === 0) {
       alert('ไม่มีข้อมูลรายจ่ายในเดือนที่เลือก');
       return;
     }
 
+    const sumTotal = monthExpenses.reduce((sum, e) => sum + e.amount, 0);
+
     const headers = ['วันที่', 'หมวดหมู่', 'ไอคอน', 'จำนวนเงิน (บาท)', 'หมายเหตุ', 'เวลาบันทึก'];
-    const rows = monthExpenses.map((e) => {
+    const rows: string[][] = [];
+
+    // Summary at the top
+    rows.push(['สรุปผลรวม', '', '', '', '', '']);
+    rows.push(['SUM ยอดรวม', sumTotal.toLocaleString(), '', '', '', '']);
+    rows.push(['', '', '', '', '', '']);
+    rows.push(headers);
+
+    monthExpenses.forEach((e) => {
       const cat = expenseCategories.find((c) => c.id === e.categoryId);
       const date = new Date(e.date + 'T00:00:00').toLocaleDateString('th-TH', {
         year: 'numeric',
@@ -273,17 +283,21 @@ export default function DataManagementPage() {
         hour: '2-digit',
         minute: '2-digit',
       });
-      return [
+      rows.push([
         date,
         cat?.name || 'ไม่ทราบ',
         cat?.icon || '',
-        e.amount.toLocaleString(),
+        e.amount.toLocaleString(), // Use toString() for CSV to avoid commas confusing Excel, though we quote it. Let's stick to simple string
         e.note || '-',
         time,
-      ];
+      ]);
     });
 
-    const csv = [headers.join(','), ...rows.map((r) => r.map((cell) => `"${cell}"`).join(','))].join('\n');
+    // Empty row and summary at the bottom
+    rows.push(Array(headers.length).fill(''));
+    rows.push(['', '', 'รวมทั้งหมด', sumTotal.toLocaleString(), '', '']);
+
+    const csv = rows.map((r) => r.map((cell) => `"${cell}"`).join(',')).join('\n');
     const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -296,7 +310,7 @@ export default function DataManagementPage() {
   };
 
   const handleExportExpensesJSON = () => {
-    const monthExpenses = expenses.filter((e) => e.date.startsWith(selectedExpenseMonth));
+    const monthExpenses = selectedExpenseMonth === 'all' ? expenses : expenses.filter((e) => e.date.startsWith(selectedExpenseMonth));
     if (monthExpenses.length === 0) {
       alert('ไม่มีข้อมูลรายจ่ายในเดือนที่เลือก');
       return;
@@ -317,6 +331,114 @@ export default function DataManagementPage() {
     const a = document.createElement('a');
     a.href = url;
     a.download = `expenses-${selectedExpenseMonth}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+
+  const handleExportSupplyCSV = () => {
+    const monthOrders = supplyOrders
+      .filter((o) => selectedSupplyMonth === 'all' || o.date.startsWith(selectedSupplyMonth))
+      .sort((a, b) => b.date.localeCompare(a.date));
+
+    if (monthOrders.length === 0) {
+      alert('ไม่มีข้อมูลใบสั่งของในเดือนที่เลือก');
+      return;
+    }
+
+    let sumTotal = 0;
+    let sumPay = 0;
+    let sumMargin = 0;
+
+    monthOrders.forEach((o) => {
+      sumTotal += o.totalOrderAmount || 0;
+      sumMargin += o.marginAmount || 0;
+      sumPay += (o.totalOrderAmount || 0) - (o.marginAmount || 0);
+    });
+
+    const headers = ['วันที่', 'รหัสใบสั่ง', 'สินค้า', 'รสชาติ/แบบ', 'จำนวน', 'ราคา/หน่วย (บาท)', 'ยอดรวม (บาท)'];
+    const rows: string[][] = [];
+    
+    // Summary at the top
+    rows.push(['สรุปผลรวม', '', '', '', '', '', '']);
+    rows.push(['SUM ยอดรวม', sumTotal.toLocaleString(), 'SUM จ่าย', sumPay.toLocaleString(), 'SUM ส่วนต่าง', sumMargin.toLocaleString(), '']);
+    rows.push(['', '', '', '', '', '', '']);
+    rows.push(headers);
+
+    monthOrders.forEach((order) => {
+      let isFirstItem = true;
+      order.items.forEach((item: any) => {
+        if (item.details && item.details.length > 0) {
+          item.details.forEach((detail: any, index: number) => {
+            rows.push([
+              isFirstItem && index === 0 ? formatDateThai(order.date) : '',
+              isFirstItem && index === 0 ? order.id : '',
+              index === 0 ? item.productName : '',
+              detail.flavorName,
+              detail.quantity.toString(),
+              index === 0 ? item.unitPrice.toLocaleString() : '',
+              index === 0 ? item.totalAmount.toLocaleString() : '',
+            ]);
+          });
+        } else {
+          rows.push([
+            isFirstItem ? formatDateThai(order.date) : '',
+            isFirstItem ? order.id : '',
+            item.productName,
+            '-',
+            item.totalQuantity.toString(),
+            item.unitPrice.toLocaleString(),
+            item.totalAmount.toLocaleString(),
+          ]);
+        }
+        isFirstItem = false;
+      });
+      
+      const orderTotal = order.totalOrderAmount || 0;
+      const orderMargin = order.marginAmount || 0;
+      const orderPay = orderTotal - orderMargin;
+
+      rows.push(['', '', '', '', '', 'รวม', orderTotal.toLocaleString()]);
+      rows.push(['', '', '', '', '', 'ส่วนต่าง', orderMargin.toLocaleString()]);
+      rows.push(['', '', '', '', '', 'จ่าย', orderPay.toLocaleString()]);
+      rows.push(Array(headers.length).fill(''));
+    });
+
+    const csv = rows.map((r) => r.map((cell) => `"${cell}"`).join(',')).join('\n');
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `supply-${selectedSupplyMonth}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportSupplyJSON = () => {
+    const monthOrders = selectedSupplyMonth === 'all' ? supplyOrders : supplyOrders.filter((o) => o.date.startsWith(selectedSupplyMonth));
+    if (monthOrders.length === 0) {
+      alert('ไม่มีข้อมูลใบสั่งของในเดือนที่เลือก');
+      return;
+    }
+
+    const dataStr = JSON.stringify(
+      {
+        supplyOrders: monthOrders,
+        exportedAt: new Date().toISOString(),
+      },
+      null,
+      2
+    );
+
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `supply-${selectedSupplyMonth}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -432,7 +554,6 @@ export default function DataManagementPage() {
 
     setDownloadedExpenseMonths((prev) => new Set([...prev, month]));
   };
-
   const handleReset = () => {
     if (confirmText === 'ลบข้อมูล') {
       resetAll();
@@ -442,17 +563,6 @@ export default function DataManagementPage() {
     }
   };
 
-  // ปุ่ม test: ลบข้อมูลแบบเร็ว (ข้าม dialog พิมพ์ยืนยัน) แต่ยังคง confirm ก่อนลบเสมอ
-  const handleTestReset = () => {
-    const confirmed = window.confirm(
-      'ทดสอบ: ต้องการล้างข้อมูลทั้งหมดเลยหรือไม่? การกระทำนี้ไม่สามารถย้อนกลับได้'
-    );
-    if (!confirmed) return;
-    resetAll();
-    window.location.href = '/';
-  };
-
-  // Calculate stats
   const totalBills = bills.length;
   const monthBills = bills.filter((b) => b.date.startsWith(selectedMonth)).length;
   const totalSales = bills.reduce((sum, b) => sum + b.totalSales, 0);
@@ -485,7 +595,7 @@ export default function DataManagementPage() {
               <p className="text-xs text-muted-foreground">บิลทั้งหมด</p>
             </div>
             <div>
-              <p className="text-2xl font-bold text-chart-2">{monthBills}</p>
+              <p className="text-2xl font-bold text-emerald-600">{monthBills}</p>
               <p className="text-xs text-muted-foreground">บิลเดือนนี้</p>
             </div>
             <div>
@@ -504,11 +614,13 @@ export default function DataManagementPage() {
               <Download className="w-4 h-4" />
               ส่งออกข้อมูล
             </CardTitle>
-            <CardDescription>ดาวน์โหลดข้อมูลเป็นไฟล์ CSV (อ่านง่าย) หรือ JSON</CardDescription>
+            <CardDescription>
+              ดาวน์โหลดข้อมูลเป็นไฟล์ CSV (อ่านง่ายบน Excel), JSON หรือรูปภาพบิล (JPG)
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label>เลือกเดือน</Label>
+              <Label>เลือกเดือนที่ต้องการส่งออก</Label>
               <Select value={selectedMonth} onValueChange={setSelectedMonth}>
                 <SelectTrigger>
                   <SelectValue placeholder="เลือกเดือน" />
@@ -519,23 +631,22 @@ export default function DataManagementPage() {
                       ไม่มีข้อมูล
                     </SelectItem>
                   ) : (
-                    availableMonths.map((month) => (
+                    [<SelectItem key="all" value="all">ทั้งหมด</SelectItem>, ...availableMonths.map((month) => (
                       <SelectItem key={month} value={month}>
                         {new Date(month + '-01').toLocaleDateString('th-TH', {
                           year: 'numeric',
                           month: 'long',
                         })}
                       </SelectItem>
-                    ))
+                    ))]
                   )}
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="flex gap-2">
+            <div className="grid grid-cols-2 gap-2">
               <Button
                 variant="outline"
-                className="flex-1"
                 onClick={handleExportCSV}
                 disabled={availableMonths.length === 0}
               >
@@ -544,7 +655,6 @@ export default function DataManagementPage() {
               </Button>
               <Button
                 variant="outline"
-                className="flex-1"
                 onClick={handleExportJSON}
                 disabled={availableMonths.length === 0}
               >
@@ -552,14 +662,21 @@ export default function DataManagementPage() {
                 JSON
               </Button>
             </div>
-            
+
+            <Button
+              className="w-full bg-neutral-900 hover:bg-neutral-800 text-white gap-2"
+              onClick={() => setShowBatchExport(true)}
+            >
+              <ImageIcon className="w-4 h-4" />
+              ดูและบันทึกบิลล่าสุดของสมาชิกทุกคน (JPG)
+            </Button>
+
             <p className="text-xs text-muted-foreground">
-              * ไฟล์ CSV รองรับการเปิดด้วย Excel และแสดงข้อมูลเป็นภาษาไทยอ่านง่าย เหมือนหน้า Transaction
+              * ไฟล์ CSV รองรับการเปิดด้วย Excel ภาษาไทย และมีการแยกยอดยกมา (เก่า) และยอดเบิกเพิ่ม (ใหม่) ครบถ้วน
             </p>
           </CardContent>
         </Card>
 
-        {/* Expenses Export Section */}
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
@@ -583,14 +700,14 @@ export default function DataManagementPage() {
                       ไม่มีข้อมูล
                     </SelectItem>
                   ) : (
-                    availableExpenseMonths.map((month) => (
+                    [<SelectItem key="all" value="all">ทั้งหมด</SelectItem>, ...availableExpenseMonths.map((month) => (
                       <SelectItem key={month} value={month}>
                         {new Date(month + '-01').toLocaleDateString('th-TH', {
                           year: 'numeric',
                           month: 'long',
                         })}
                       </SelectItem>
-                    ))
+                    ))]
                   )}
                 </SelectContent>
               </Select>
@@ -619,6 +736,70 @@ export default function DataManagementPage() {
 
             <p className="text-xs text-muted-foreground">
               * ข้อมูลรายจ่ายบันทึกแยกใน expenses.json ไม่รวมกับ store.json
+            </p>
+          </CardContent>
+        </Card>
+
+        
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Download className="w-4 h-4" />
+              ส่งออกใบสั่งของ (supply.json)
+            </CardTitle>
+            <CardDescription>
+              ดาวน์โหลดข้อมูลใบสั่งของเป็นไฟล์ CSV หรือ JSON
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label>เลือกเดือน</Label>
+              <Select value={selectedSupplyMonth} onValueChange={setSelectedSupplyMonth}>
+                <SelectTrigger>
+                  <SelectValue placeholder="เลือกเดือน" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableSupplyMonths.length === 0 ? (
+                    <SelectItem value={getCurrentMonth()} disabled>
+                      ไม่มีข้อมูล
+                    </SelectItem>
+                  ) : (
+                    [<SelectItem key="all" value="all">ทั้งหมด</SelectItem>, ...availableSupplyMonths.map((month) => (
+                      <SelectItem key={month} value={month}>
+                        {new Date(month + '-01').toLocaleDateString('th-TH', {
+                          year: 'numeric',
+                          month: 'long',
+                        })}
+                      </SelectItem>
+                    ))]
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={handleExportSupplyCSV}
+                disabled={availableSupplyMonths.length === 0}
+              >
+                <FileSpreadsheet className="w-4 h-4 mr-2" />
+                CSV (Excel)
+              </Button>
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={handleExportSupplyJSON}
+                disabled={availableSupplyMonths.length === 0}
+              >
+                <FileJson className="w-4 h-4 mr-2" />
+                JSON
+              </Button>
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+              * ข้อมูลใบสั่งของบันทึกแยกใน Firestore (orders)
             </p>
           </CardContent>
         </Card>
@@ -678,7 +859,7 @@ export default function DataManagementPage() {
             </CardTitle>
             <CardDescription>การกระทำเหล่านี้ไม่สามารถย้อนกลับได้</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent>
             <Button
               variant="destructive"
               className="w-full"
@@ -687,115 +868,11 @@ export default function DataManagementPage() {
               <Trash2 className="w-4 h-4 mr-2" />
               ล้างข้อมูลทั้งหมด
             </Button>
-            <Button
-              variant="outline"
-              className="w-full border-destructive/40 text-destructive hover:bg-destructive/10"
-              onClick={handleTestReset}
-            >
-              <FlaskConical className="w-4 h-4 mr-2" />
-              test (ลบเร็ว มี confirm)
-            </Button>
           </CardContent>
         </Card>
       </div>
 
-      {/* Cleanup Confirmation — บังคับ download ก่อน */}
-      <AlertDialog open={showCleanupConfirm} onOpenChange={setShowCleanupConfirm}>
-        <AlertDialogContent className="max-w-md">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-destructive" />
-              รัน Cleanup — ต้อง Download ก่อน
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {!hasAnythingToDelete
-                ? 'ไม่มีข้อมูลเก่าที่ต้องลบในขณะนี้'
-                : `ข้อมูลด้านล่างจะถูกลบถาวร ต้อง Download CSV ทุกเดือนให้ครบก่อนจึงจะกด Cleanup ได้`}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-
-          {hasAnythingToDelete && (
-            <div className="space-y-3 py-2 max-h-72 overflow-y-auto">
-              {/* บิลที่จะถูกลบ */}
-              {monthsToDelete.bills.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">ข้อมูลบิล</p>
-                  {monthsToDelete.bills.map((month) => {
-                    const done = downloadedBillMonths.has(month);
-                    return (
-                      <div key={month} className={`flex items-center justify-between p-2 rounded-lg border ${done ? 'bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800' : 'bg-muted/40'}`}>
-                        <div className="flex items-center gap-2">
-                          <span className="text-base">{done ? '✅' : '📄'}</span>
-                          <span className="text-sm font-medium">
-                            {new Date(month + '-01').toLocaleDateString('th-TH', { year: 'numeric', month: 'long' })}
-                          </span>
-                        </div>
-                        <Button
-                          size="sm"
-                          variant={done ? 'ghost' : 'outline'}
-                          className="h-7 text-xs"
-                          onClick={() => handleCleanupExportBillsCSV(month)}
-                        >
-                          <FileSpreadsheet className="w-3 h-3 mr-1" />
-                          {done ? 'Downloaded' : 'Download CSV'}
-                        </Button>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* รายจ่ายที่จะถูกลบ */}
-              {monthsToDelete.expenses.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">รายจ่าย</p>
-                  {monthsToDelete.expenses.map((month) => {
-                    const done = downloadedExpenseMonths.has(month);
-                    return (
-                      <div key={month} className={`flex items-center justify-between p-2 rounded-lg border ${done ? 'bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800' : 'bg-muted/40'}`}>
-                        <div className="flex items-center gap-2">
-                          <span className="text-base">{done ? '✅' : '💰'}</span>
-                          <span className="text-sm font-medium">
-                            {new Date(month + '-01').toLocaleDateString('th-TH', { year: 'numeric', month: 'long' })}
-                          </span>
-                        </div>
-                        <Button
-                          size="sm"
-                          variant={done ? 'ghost' : 'outline'}
-                          className="h-7 text-xs"
-                          onClick={() => handleCleanupExportExpensesCSV(month)}
-                        >
-                          <FileSpreadsheet className="w-3 h-3 mr-1" />
-                          {done ? 'Downloaded' : 'Download CSV'}
-                        </Button>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* Progress */}
-              <div className={`text-center text-xs py-1 rounded-md ${allDownloaded ? 'text-green-600 font-semibold' : 'text-muted-foreground'}`}>
-                {allDownloaded
-                  ? '✅ Download ครบแล้ว — พร้อม Cleanup'
-                  : `⬇️ Download ให้ครบก่อน จึงจะกด Cleanup ได้`}
-              </div>
-            </div>
-          )}
-
-          <AlertDialogFooter>
-            <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleRunCleanup}
-              disabled={hasAnythingToDelete && !allDownloaded}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 disabled:opacity-40"
-            >
-              <RefreshCw className="w-4 h-4 mr-2" />
-              ยืนยัน Cleanup
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <BatchExportJPGDialog open={showBatchExport} onOpenChange={setShowBatchExport} />
 
       {/* Reset Confirmation */}
       <AlertDialog open={showResetConfirm} onOpenChange={setShowResetConfirm}>

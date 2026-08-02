@@ -190,41 +190,6 @@ function LedgerContent() {
 
     setShowReturnConfirm(false);
   };
-  
-  // const handleConfirmDayClose = () => {
-  //   if (!currentBill) return;
-
-  //   const dProduct = products.find((p) => p.type === 'D');
-  //   const dItem = dProduct
-  //     ? currentBill.items.find((item) => item.productId === dProduct.id)
-  //     : null;
-  //   const dQuantity = dItem ? dItem.totalStock : 0;
-  //   const dPrice = dProduct ? getProductPrice(dProduct, currentMember) : 0;
-
-  //   updateBill(currentBill.id, {
-  //     icePrice: dQuantity * dPrice,
-  //     status: 'completed',
-  //   });
-
-  //   setShowCloseConfirm(false);
-  // };
-
-  // const handleReturnGoods = () => {
-  //   if (!currentBill) return;
-
-  //   const zeroInputs: Record<string, number> = {};
-  //   Array.from(new Set(products.map((p) => p.type))).forEach((type) => {
-  //     zeroInputs[type] = 0;
-  //   });
-
-  //   updateBill(currentBill.id, {
-  //     returnInputs: zeroInputs,
-  //     amountOwed: 0,
-  //     status: 'completed',
-  //   });
-
-  //   setShowReturnConfirm(false);
-  // };
 
   const handleDeleteBill = useCallback(() => {
     if (!selectedBillId) return;
@@ -340,6 +305,7 @@ function LedgerContent() {
                 onSummaryModeChange={setSummaryMode}
                 onConfirmCheckout={handleConfirmCheckout}
                 onDeleteClick={() => setShowDeleteConfirm(true)}
+                onRevertToDraft={() => updateBill(currentBill.id, { status: 'draft' })}
               />
             )}
 

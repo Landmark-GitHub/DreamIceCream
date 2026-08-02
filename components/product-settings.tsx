@@ -198,6 +198,12 @@ export function ProductSettings() {
   // --- จัดการสินค้า (Add / Edit Product Name) ---
   const handleOpenAddProduct = () => {
     setEditingProduct(null);
+    
+    // หาค่า sortOrder ที่มากที่สุดในระบบปัจจุบัน แล้วบวก 1 เพื่อให้อยู่ล่างสุดเสมอ
+    const maxSortOrder = products.length > 0 
+      ? Math.max(...products.map(p => p.sortOrder || 0)) 
+      : 0;
+
     setProductFormData({
       id: '',
       isManualId: false,
@@ -210,7 +216,7 @@ export function ProductSettings() {
       priceOut: 0,
       priceWalkIn: 0,
       imageUrl: '',
-      sortOrder: products.length + 1,
+      sortOrder: maxSortOrder + 1,
     });
     setIsCameraActive(false);
     setCameraError(null);

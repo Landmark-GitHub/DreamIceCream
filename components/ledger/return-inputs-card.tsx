@@ -27,7 +27,15 @@ export function ReturnInputsCard({
   onReturnGoods,
   isPaymentComplete, // 2. ประกาศดึงไปใช้งาน
 }: ReturnInputsCardProps) {
-  const productTypes = getCheckoutProductTypes(products);
+  const RETURN_TYPE_ORDER = ['XL', 'S', 'Coffee', 'Sandwich','Cup', 'Cone'];
+  const productTypes = [...getCheckoutProductTypes(products)].sort((a, b) => {
+    const ia = RETURN_TYPE_ORDER.indexOf(a);
+    const ib = RETURN_TYPE_ORDER.indexOf(b);
+    if (ia === -1 && ib === -1) return 0;
+    if (ia === -1) return 1;
+    if (ib === -1) return -1;
+    return ia - ib;
+  });
   const isCompleted = bill.status === 'completed';
 
   return (

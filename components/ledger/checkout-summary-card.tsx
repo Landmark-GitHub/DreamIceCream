@@ -2,7 +2,7 @@
 
 import { Bill, Member, Product, getProductPrice, PRODUCT_TYPE_LABELS } from '@/lib/types';
 import { getCheckoutProductTypes } from '@/lib/ledger-utils';
-import { CheckCircle2, Lock, Package, Trash2 } from 'lucide-react';
+import { CheckCircle2, Lock, Package, Trash2, RotateCcw } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -18,6 +18,7 @@ interface CheckoutSummaryCardProps {
   onSummaryModeChange: (mode: 'type' | 'all') => void;
   onConfirmCheckout: () => void;
   onDeleteClick: () => void;
+  onRevertToDraft?: () => void;
 }
 
 export function CheckoutSummaryCard({
@@ -30,6 +31,7 @@ export function CheckoutSummaryCard({
   onSummaryModeChange,
   onConfirmCheckout,
   onDeleteClick,
+  onRevertToDraft,
 }: CheckoutSummaryCardProps) {
   const productTypes = getCheckoutProductTypes(products);
   const isCompleted = bill.status === 'completed';
@@ -189,6 +191,18 @@ export function CheckoutSummaryCard({
               <Lock className="w-4 h-4 inline mr-1" />
               ปิดวันแล้ว
             </div>
+          )}
+          {isCheckout && onRevertToDraft && (
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={onRevertToDraft}
+              disabled={isCompleted}
+              className="shrink-0"
+              title="กลับไปแก้ไข (เปลี่ยนสถานะเป็นกำลังเบิก)"
+            >
+              <RotateCcw className="w-4 h-4 text-orange-500" />
+            </Button>
           )}
           <Button
             variant="outline"
