@@ -101,7 +101,7 @@ export function BillPrintPreviewDialog({
             ref={printAreaRef}
             className="bg-white shadow-md border border-neutral-200 shrink-0 my-2 overflow-hidden"
             style={{
-              width: mode === 'checkout' ? '350px' : '100%',
+              width: mode === 'checkout' ? '280px' : '100%',
               maxWidth: mode === 'checkout' ? '350px' : '100%',
               minHeight: '200px',
             }}
@@ -206,7 +206,7 @@ export function BillReceiptContent({
         <div
           className={cn(
             'border-b border-dashed border-neutral-300 pb-1 font-bold grid text-neutral-700 text-xs',
-            mode === 'checkout' ? 'grid-cols-18' : 'grid-cols-18'
+            mode === 'checkout' ? 'grid-cols-12' : 'grid-cols-18'
           )}
         >
           {mode === 'checkout' ? (
