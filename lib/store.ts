@@ -244,10 +244,10 @@ async function loadFromFirestore(): Promise<AppState | null> {
       historyLogs,
       settings: settingsData
         ? {
-            retentionMonths: settingsData.retentionMonths ?? 3,
-            reminderExport: settingsData.reminderExport ?? true,
-            lastExportDate: settingsData.lastExportDate ?? '',
-          }
+          retentionMonths: settingsData.retentionMonths ?? 3,
+          reminderExport: settingsData.reminderExport ?? true,
+          lastExportDate: settingsData.lastExportDate ?? '',
+        }
         : initialState.settings,
       lastCleanup: settingsData?.lastCleanup || getToday(),
       users,
@@ -486,7 +486,15 @@ export const useStore = create<Store>()((set, get) => ({
 
       const bill = createNewBill(memberId, member.name, state.products, prevBill, billDate, member);
 
-      bill.previousOwed = prevBill ? prevBill.amountOwed : 0;
+      // ✅ ย้ายค่ายอดค้าง/เครดิตติดลบ จากบิลก่อนหน้าเข้า previousOwed
+      const previousOwed = prevBill ? prevBill.amountOwed : 0;
+      bill.previousOwed = previousOwed;
+
+      // คำนวณยอดรวมเริ่มต้นของบิลใหม่ (ถ้ารับ previousOwed ติดลบมา ยอดค้างบิลใหม่จะถูกหักลบอัตโนมัติ)
+      const { totalSales, amountOwed } = calculateBillTotals(bill, state.products, member);
+      bill.totalSales = totalSales;
+      bill.amountOwed = amountOwed;
+
       newlyCreatedBillId = bill.id;
 
       saveDocument('bills', bill.id, bill);
@@ -567,20 +575,36 @@ export const useStore = create<Store>()((set, get) => ({
     });
   },
 
+  // store.ts
+
   confirmDayClose: (billId: string) => {
     set((state) => {
       let targetBill: Bill | null = null;
       const bills = state.bills.map((b) => {
         if (b.id === billId) {
-          targetBill = { ...b, status: 'completed' as const, dayClosed: true, updatedAt: new Date().toISOString() };
+          const member = state.members.find((m) => m.id === b.memberId);
+          // ✅ คำนวณยอดขายและยอดค้างสุทธิ (รวมค่าติดลบ) สดๆ อีกครั้งก่อนปิดวัน
+          const { totalSales, amountOwed } = calculateBillTotals(b, state.products, member);
+
+          targetBill = {
+            ...b,
+            totalSales,
+            amountOwed, // บันทึกค่าติดลบ (-295) ลงในวัตถุบิลจริง
+            status: 'completed' as const,
+            dayClosed: true,
+            updatedAt: new Date().toISOString(),
+          };
           return targetBill;
         }
         return b;
       });
-      if (targetBill) saveDocument('bills', billId, targetBill);
+
+      if (targetBill) saveDocument('bills', billId, targetBill); // ✅ ส่งค่าที่มีติดลบไป Firestore
       return { bills };
     });
   },
+
+
 
   // ===== BILL HELPERS =====
   getTodayBills: () => {
@@ -643,9 +667,9 @@ export const useStore = create<Store>()((set, get) => ({
     if (bills.length === 0) return '';
 
     const headers = [
-      'วันที่', 'ชื่อสมาชิก', 'ประเภทสินค้า', 'ชื่อสินค้า', 'ยอดเก่า', 
-      'ยอดใหม่ (เบิก)', 'ยอดรวม', 'ยอดเหลือคืน', 'ยอดขาย', 'ราคา/ชิ้น', 
-      'มูลค่าขาย (บาท)', 'ค่าน้ำแข็ง (บาท)', 'ยอดขายรวม (บาท)', 'จ่ายแล้ว (บาท)', 
+      'วันที่', 'ชื่อสมาชิก', 'ประเภทสินค้า', 'ชื่อสินค้า', 'ยอดเก่า',
+      'ยอดใหม่ (เบิก)', 'ยอดรวม', 'ยอดเหลือคืน', 'ยอดขาย', 'ราคา/ชิ้น',
+      'มูลค่าขาย (บาท)', 'ค่าน้ำแข็ง (บาท)', 'ยอดขายรวม (บาท)', 'จ่ายแล้ว (บาท)',
       'ค้างชำระ (บาท)', 'หมายเหตุ', 'สถานะ'
     ];
 
@@ -658,8 +682,8 @@ export const useStore = create<Store>()((set, get) => ({
 
       productTypes.forEach((type) => {
         const typeProducts = state.products.filter((p) => p.type === type);
-        const typeItems = bill.items.filter((item) => 
-          typeProducts.some((p) => p.id === item.productId) && 
+        const typeItems = bill.items.filter((item) =>
+          typeProducts.some((p) => p.id === item.productId) &&
           (item.totalStock > 0 || item.newStock > 0 || item.sold > 0)
         );
 

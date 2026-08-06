@@ -156,6 +156,26 @@ function LedgerContent() {
     updateBill(selectedBillId, { returnInputs: zeroInputs });
   }, [currentBill, selectedBillId, products, updateBill]);
 
+  // const handleConfirmDayClose = () => {
+  //   if (!currentBill) return;
+
+  //   const dProduct = products.find((p) => p.type === 'D');
+  //   const dItem = dProduct
+  //     ? currentBill.items.find((item) => item.productId === dProduct.id)
+  //     : null;
+  //   const dQuantity = dItem ? dItem.totalStock : 0;
+  //   const dPrice = dProduct ? getProductPrice(dProduct, currentMember) : 0;
+
+  //   updateBill(currentBill.id, {
+  //     icePrice: dQuantity * dPrice,
+  //     status: 'completed',
+  //   });
+
+  //   setShowCloseConfirm(false);
+  // };
+
+  // ledger/page.tsx
+
   const handleConfirmDayClose = () => {
     if (!currentBill) return;
 
@@ -165,9 +185,21 @@ function LedgerContent() {
       : null;
     const dQuantity = dItem ? dItem.totalStock : 0;
     const dPrice = dProduct ? getProductPrice(dProduct, currentMember) : 0;
+    const icePrice = dQuantity * dPrice;
 
+    // ✅ คำนวณยอดสุทธิรวมก่อนปิดวัน (รวมค่าน้ำแข็งแห้งและเครดิตติดลบ)
+    const updatedBillObj = { ...currentBill, icePrice };
+    const { totalSales, amountOwed } = calculateBillTotals(
+      updatedBillObj,
+      products,
+      currentMember
+    );
+
+    // ✅ เซฟทั้ง status, totalSales และ amountOwed (ติดลบ) ลง Firebase
     updateBill(currentBill.id, {
-      icePrice: dQuantity * dPrice,
+      icePrice,
+      totalSales,
+      amountOwed, // บันทึกยอดติดลบ (-295) ลง Firestore จริงๆ
       status: 'completed',
     });
 

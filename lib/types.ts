@@ -400,11 +400,11 @@ export function calculateBillTotals(
   const iceDryPrice = dQuantity * dPrice;
 
   const totalSales = itemsTotal + planTotal + iceDryPrice;
-  
-  let amountOwed = totalSales - (bill.amountPaid || 0) + bill.previousOwed;
-  if (amountOwed < 0) {
-    amountOwed = 0;
-  }
+  const amountOwed = totalSales + (bill.previousOwed || 0) - (bill.amountPaid || 0);
+  // let amountOwed = totalSales - (bill.amountPaid || 0) + bill.previousOwed;
+  // if (amountOwed < 0) {
+  //   amountOwed = 0;
+  // }
 
   return { totalSales, amountOwed };
 }

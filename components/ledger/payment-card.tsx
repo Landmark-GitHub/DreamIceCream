@@ -13,7 +13,6 @@ interface PaymentCardProps {
   products: Product[];
   member: Member | undefined;
   totalSales: number;
-  previousOwed: number;
   onAmountPaidChange: (value: number) => void;
   onNotesChange: (value: string) => void;
   onPayFull: () => void;
@@ -26,7 +25,6 @@ export function PaymentCard({
   products,
   member,
   totalSales,
-  previousOwed,
   onAmountPaidChange,
   onNotesChange,
   onPayFull,
@@ -36,8 +34,8 @@ export function PaymentCard({
   const isDraft = bill.status === 'draft';
   const isCompleted = bill.status === 'completed';
 
-  const { totalSales: calculatedSales } = calculateBillTotals(bill, products, member);
-  const amountOwed = calculatedSales + previousOwed - (bill.amountPaid || 0);
+  const { totalSales: calculatedSales, amountOwed } = calculateBillTotals(bill, products, member);
+  const previousOwed = bill.previousOwed;
 
   return (
     <Card className="border-chart-2/30">
@@ -60,9 +58,22 @@ export function PaymentCard({
             </span>
           </div>
 
-          <div className="flex justify-between items-center bg-amber-500/10 p-2.5 rounded-lg border border-amber-500/20 text-sm">
+          {/* <div className="flex justify-between items-center bg-amber-500/10 p-2.5 rounded-lg border border-amber-500/20 text-sm">
             <span className="font-medium text-amber-700">ยอดค้างสะสม:</span>
             <span className="font-bold text-amber-700">
+              {Math.round(previousOwed).toLocaleString()} บาท
+            </span>
+          </div> */}
+          <div className={cn(
+            "flex justify-between items-center p-2.5 rounded-lg border text-sm",
+            previousOwed < 0 
+              ? "bg-emerald-500/10 border-emerald-500/20" 
+              : "bg-amber-500/10 border-amber-500/20"
+          )}>
+            <span className={cn("font-medium", previousOwed < 0 ? "text-emerald-700" : "text-amber-700")}>
+              {previousOwed < 0 ? 'เครดิตสะสม:' : 'ยอดค้างสะสม:'}
+            </span>
+            <span className={cn("font-bold", previousOwed < 0 ? "text-emerald-700" : "text-amber-700")}>
               {Math.round(previousOwed).toLocaleString()} บาท
             </span>
           </div>
