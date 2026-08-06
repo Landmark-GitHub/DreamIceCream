@@ -462,11 +462,11 @@ function ReceiptLineItems({
           <span className="font-medium">{totalAddonsPriceSum.toLocaleString()} บาท</span>
         </div>
         <div className="flex justify-between font-semibold border-t border-neutral-100 pt-1">
-          <span>ยอดเบิกรวมสุทธิวันนี้:</span>
+          <span>ยอดรวมสุทธิวันนี้:</span>
           <span>{finalReturnTotalToday.toLocaleString()} บาท</span>
         </div>
         <div className="flex justify-between text-neutral-600">
-          <span>หนี้ค้างชำระสะสมเดิม:</span>
+          <span>ยอดค้างชำระ:</span>
           <span className="font-medium">{Math.round(previousOwed).toLocaleString()} บาท</span>
         </div>
         <div className="flex justify-between bg-neutral-50 p-1 rounded border border-neutral-150">
@@ -474,7 +474,7 @@ function ReceiptLineItems({
           <span className="font-bold">-{Math.round(amountPaidToday).toLocaleString()} บาท</span>
         </div>
         <div className="flex justify-between items-center font-bold text-sm bg-neutral-50 p-1.5 rounded border border-neutral-200 mt-1">
-          <span>ยอดหนี้สะสมรวมทั้งหมด:</span>
+          <span>ยอดรวมทั้งหมด:</span>
           <span className={finalOwedAmount > 0 ? 'text-red-600' : 'text-emerald-600'}>
             {finalOwedAmount > 0 ? Math.round(finalOwedAmount).toLocaleString() : '0'} บาท
           </span>
