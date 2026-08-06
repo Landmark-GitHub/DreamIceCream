@@ -94,24 +94,37 @@ export function PaymentCard({
           <div
             className={cn(
               'p-3 rounded-lg',
-              amountOwed > 0 ? 'bg-destructive/10' : 'bg-chart-2/10'
+              amountOwed > 0
+                ? 'bg-destructive/10'
+                : amountOwed < 0
+                ? 'bg-emerald-500/10' // ใช้สีเขียวสดขึ้น/สีฟ้า เพื่อแสดงว่าเป็นยอดชำระเกิน (เครดิต)
+                : 'bg-chart-2/10'
             )}
           >
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium">
-                {amountOwed > 0 ? 'ยอดค้างสุทธิรวม' : 'จ่ายครบหมดแล้ว'}
+                {amountOwed > 0
+                  ? 'ยอดค้างสุทธิรวม'
+                  : amountOwed < 0
+                  ? 'ยอดจ่ายเกิน (สะสมเป็นเครดิต)'
+                  : 'จ่ายครบหมดแล้ว'}
               </span>
               <span
                 className={cn(
                   'text-3xl font-bold',
-                  amountOwed > 0 ? 'text-destructive' : 'text-chart-2'
+                  amountOwed > 0
+                    ? 'text-destructive'
+                    : amountOwed < 0
+                    ? 'text-emerald-600'
+                    : 'text-chart-2'
                 )}
               >
-                {amountOwed > 0 ? Math.round(amountOwed).toLocaleString() : '0'} บาท
+                {/* ยอมให้แสดงเครื่องหมายติดลบ (-) เมื่อ amountOwed < 0 */}
+                {Math.round(amountOwed).toLocaleString()} บาท
               </span>
             </div>
           </div>
-
+          
           <div>
             <Label className="text-sm text-muted-foreground">หมายเหตุ</Label>
             <Input
