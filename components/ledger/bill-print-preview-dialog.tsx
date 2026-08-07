@@ -240,7 +240,7 @@ export function BillReceiptContent({
         <div
           className={cn(
             'border-b border-dashed border-neutral-300 pb-1 font-bold grid text-neutral-700 text-xs',
-            mode === 'checkout' ? 'grid-cols-12' : 'grid-cols-18'
+            mode === 'checkout' ? 'grid-cols-12' : 'grid-cols-[repeat(18,minmax(0,1fr))]'
           )}
         >
           {mode === 'checkout' ? (
@@ -458,7 +458,7 @@ function ReceiptLineItems({
         return (
           <div
             key={type}
-            className="grid grid-cols-18 gap-0 text-[10px] items-center text-sm gap-y-0.5 border-b border-neutral-100 pb-1 last:border-0"
+            className="grid grid-cols-[repeat(18,minmax(0,1fr))] gap-0 text-[10px] items-center text-sm gap-y-0.5 border-b border-neutral-100 pb-1 last:border-0"
           >
             <div className="col-span-4 font-medium truncate">{typeLabel}</div>
             <div className="col-span-2 text-right text-neutral-400">{oldStock}</div>

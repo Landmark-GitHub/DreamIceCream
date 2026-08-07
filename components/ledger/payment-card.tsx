@@ -13,6 +13,7 @@ interface PaymentCardProps {
   products: Product[];
   member: Member | undefined;
   totalSales: number;
+  previousOwed: number; // รับค่ายอดค้าง/เครดิตเดิมเข้ามา
   onAmountPaidChange: (value: number) => void;
   onNotesChange: (value: string) => void;
   onPayFull: () => void;
@@ -25,6 +26,7 @@ export function PaymentCard({
   products,
   member,
   totalSales,
+  previousOwed,
   onAmountPaidChange,
   onNotesChange,
   onPayFull,
@@ -34,8 +36,11 @@ export function PaymentCard({
   const isDraft = bill.status === 'draft';
   const isCompleted = bill.status === 'completed';
 
-  const { totalSales: calculatedSales, amountOwed } = calculateBillTotals(bill, products, member);
-  const previousOwed = bill.previousOwed;
+  // 1. คำนวณยอดขายวันนี้
+  const { totalSales: calculatedSales } = calculateBillTotals(bill, products, member);
+  
+  // 2. คำนวณยอดสุทธิที่ต้องจ่ายทั้งหมดจริง = (ยอดขายวันนี้ + ยอดค้างเดิม/เครดิต) - ยอดที่จ่ายวันนี้
+  const netAmountOwed = (totalSales + previousOwed) - (bill.amountPaid || 0);
 
   return (
     <Card className="border-chart-2/30">
@@ -51,19 +56,15 @@ export function PaymentCard({
         </div>
 
         <div className="space-y-4">
+          {/* ยอดขายวันนี้ */}
           <div className="flex justify-between items-center bg-sky-500/10 p-2.5 rounded-lg border border-sky-500/20 text-sm">
-            <span className="font-medium text-sky-700">ยอดสินค้า:</span>
+            <span className="font-medium text-sky-700">ยอดสินค้าวันนี้:</span>
             <span className="font-bold text-sky-700">
               {Math.round(totalSales).toLocaleString()} บาท
             </span>
           </div>
 
-          {/* <div className="flex justify-between items-center bg-amber-500/10 p-2.5 rounded-lg border border-amber-500/20 text-sm">
-            <span className="font-medium text-amber-700">ยอดค้างสะสม:</span>
-            <span className="font-bold text-amber-700">
-              {Math.round(previousOwed).toLocaleString()} บาท
-            </span>
-          </div> */}
+          {/* ยอดค้างสะสม / เครดิตสะสมเดิม */}
           <div className={cn(
             "flex justify-between items-center p-2.5 rounded-lg border text-sm",
             previousOwed < 0 
@@ -71,13 +72,14 @@ export function PaymentCard({
               : "bg-amber-500/10 border-amber-500/20"
           )}>
             <span className={cn("font-medium", previousOwed < 0 ? "text-emerald-700" : "text-amber-700")}>
-              {previousOwed < 0 ? 'เครดิตสะสม:' : 'ยอดค้างสะสม:'}
+              {previousOwed < 0 ? 'เครดิตสะสมเดิม:' : 'ยอดค้างสะสมเดิม:'}
             </span>
             <span className={cn("font-bold", previousOwed < 0 ? "text-emerald-700" : "text-amber-700")}>
               {Math.round(previousOwed).toLocaleString()} บาท
             </span>
           </div>
 
+          {/* ช่องกรอกเงินที่จ่ายวันนี้ */}
           <div>
             <Label className="text-sm text-muted-foreground">ยอดจ่ายวันนี้ (บาท)</Label>
             <div className="flex gap-2 mt-1">
@@ -86,52 +88,48 @@ export function PaymentCard({
                 value={bill.amountPaid?.toString() || ''}
                 onChange={(e) => onAmountPaidChange(parseFloat(e.target.value) || 0)}
                 placeholder="0"
-                disabled={isDraft}
+                disabled={isDraft || isCompleted}
               />
               <Button
                 variant="outline"
                 onClick={onPayFull}
-                disabled={
-                  isDraft ||
-                  isCompleted ||
-                  totalSales + previousOwed <= 0
-                }
+                disabled={isDraft || isCompleted}
               >
                 จ่ายครบ
               </Button>
             </div>
           </div>
 
+          {/* ยอดค้างสุทธิรวมทั้งหมด (นำ netAmountOwed มาแสดง) */}
           <div
             className={cn(
               'p-3 rounded-lg',
-              amountOwed > 0
+              netAmountOwed > 0
                 ? 'bg-destructive/10'
-                : amountOwed < 0
-                ? 'bg-emerald-500/10' // ใช้สีเขียวสดขึ้น/สีฟ้า เพื่อแสดงว่าเป็นยอดชำระเกิน (เครดิต)
+                : netAmountOwed < 0
+                ? 'bg-emerald-500/10'
                 : 'bg-chart-2/10'
             )}
           >
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium">
-                {amountOwed > 0
+                {netAmountOwed > 0
                   ? 'ยอดค้างสุทธิรวม'
-                  : amountOwed < 0
-                  ? 'ยอดจ่ายเกิน (สะสมเป็นเครดิต)'
-                  : 'จ่ายครบหมดแล้ว'}
+                  : netAmountOwed < 0
+                  ? 'ยอดคงเหลือ (เป็นเครดิตสะสม)'
+                  : 'ชำระครบพอดี'}
               </span>
               <span
                 className={cn(
                   'text-3xl font-bold',
-                  amountOwed > 0
+                  netAmountOwed > 0
                     ? 'text-destructive'
-                    : amountOwed < 0
+                    : netAmountOwed < 0
                     ? 'text-emerald-600'
                     : 'text-chart-2'
                 )}
               >
-                {/* ยอมให้แสดงเครื่องหมายติดลบ (-) เมื่อ amountOwed < 0 */}
-                {Math.round(amountOwed).toLocaleString()} บาท
+                {Math.round(netAmountOwed).toLocaleString()} บาท
               </span>
             </div>
           </div>
@@ -139,7 +137,7 @@ export function PaymentCard({
           <div>
             <Label className="text-sm text-muted-foreground">หมายเหตุ</Label>
             <Input
-              value={bill.notes}
+              value={bill.notes || ''}
               onChange={(e) => onNotesChange(e.target.value)}
               placeholder="บันทึกเพิ่มเติม..."
               disabled={isCompleted}
@@ -148,7 +146,7 @@ export function PaymentCard({
           </div>
 
           {!isCompleted && (
-            <div className="grid grid-rows-2 gap-2">
+            <div className="grid grid-rows-1 gap-2">
               <Button onClick={onCloseDay} className="flex-1" disabled={isDraft}>
                 <Lock className="w-4 h-4 mr-2" />
                 ปิดวัน (บันทึกยอด)
@@ -163,7 +161,7 @@ export function PaymentCard({
           )}
 
           {isCompleted && (
-            <div className="grid grid-rows-2 gap-2">
+            <div className="grid grid-rows-1 gap-2">
               <div className="text-center py-2 text-sm text-muted-foreground bg-muted rounded-lg">
                 <Lock className="w-4 h-4 inline mr-1" />
                 ปิดบิลแล้ว - ไม่สามารถแก้ไขได้
