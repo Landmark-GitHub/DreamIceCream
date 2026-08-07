@@ -65,42 +65,32 @@ export function BillPrintPreviewDialog({
 
       const fileName = `บิล-${member?.name || 'สมาชิก'}-${bill?.date || ''}-${mode}.jpg`;
 
-      // แปลง dataUrl -> Blob -> File (ต้องระบุ type: image/jpeg ชัดเจน
-      // ไม่งั้น iOS/iPadOS จะไม่รู้จักว่าเป็นรูปภาพ และจะไม่ขึ้นตัวเลือก
-      // "บันทึกภาพ" ใน share sheet ให้ มีแต่ Files / Drive)
-      const res = await fetch(dataUrl);
-      const blob = await res.blob();
-      const file = new File([blob], fileName, { type: 'image/jpeg' });
-
-      // ใช้ Web Share API ก่อนบนมือถือ (โดยเฉพาะ iOS/iPadOS Safari)
-      // เพราะจะเด้ง native share sheet ที่มีปุ่ม "บันทึกภาพ" ให้กดตรงๆ
-      if (
-        typeof navigator !== 'undefined' &&
-        navigator.canShare &&
-        navigator.canShare({ files: [file] })
-      ) {
-        try {
-          await navigator.share({
-            files: [file],
-            title: fileName,
-          });
-          return;
-        } catch (shareError) {
-          // ผู้ใช้กดยกเลิก share sheet เอง ไม่ต้อง fallback ไป download ซ้ำ
-          if ((shareError as Error)?.name === 'AbortError') {
-            return;
-          }
-          // เหตุผลอื่น (เช่น browser บล็อก) ให้ตกไปใช้วิธี download แบบเดิมด้านล่าง
-        }
-      }
-
-      // Fallback: desktop / Android หรือกรณี share ไม่ได้
-      // -> ดาวน์โหลดไฟล์ลงเครื่องโดยตรงผ่าน <a download>
+      // 1. สั่งบันทึก/ดาวน์โหลดลงเครื่องอัตโนมัติก่อน
       const link = document.createElement('a');
       link.download = fileName;
-      link.href = URL.createObjectURL(file);
+      link.href = dataUrl;
       link.click();
-      URL.revokeObjectURL(link.href);
+
+      // 2. ถ้าเครื่องรองรับ Web Share API ให้เด้ง Share Sheet ตามหลัง
+      if (typeof window !== 'undefined' && typeof navigator !== 'undefined' && navigator.canShare) {
+        try {
+          const res = await fetch(dataUrl);
+          const blob = await res.blob();
+          const file = new File([blob], fileName, { type: 'image/jpeg' });
+
+          if (navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              files: [file],
+              title: fileName,
+            });
+          }
+        } catch (shareError) {
+          // หากผู้ใช้กดยกเลิกหน้าต่างแชร์บน iOS/Android ไม่ต้องขึ้น Error
+          if ((shareError as Error)?.name !== 'AbortError') {
+            console.error('เกิดข้อผิดพลาดขณะแชร์ไฟล์:', shareError);
+          }
+        }
+      }
     } catch (error) {
       console.error('ไม่สามารถบันทึกรูปภาพได้:', error);
     } finally {
