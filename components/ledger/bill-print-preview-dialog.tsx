@@ -63,10 +63,44 @@ export function BillPrintPreviewDialog({
         },
       });
 
+      const fileName = `บิล-${member?.name || 'สมาชิก'}-${bill?.date || ''}-${mode}.jpg`;
+
+      // แปลง dataUrl -> Blob -> File (ต้องระบุ type: image/jpeg ชัดเจน
+      // ไม่งั้น iOS/iPadOS จะไม่รู้จักว่าเป็นรูปภาพ และจะไม่ขึ้นตัวเลือก
+      // "บันทึกภาพ" ใน share sheet ให้ มีแต่ Files / Drive)
+      const res = await fetch(dataUrl);
+      const blob = await res.blob();
+      const file = new File([blob], fileName, { type: 'image/jpeg' });
+
+      // ใช้ Web Share API ก่อนบนมือถือ (โดยเฉพาะ iOS/iPadOS Safari)
+      // เพราะจะเด้ง native share sheet ที่มีปุ่ม "บันทึกภาพ" ให้กดตรงๆ
+      if (
+        typeof navigator !== 'undefined' &&
+        navigator.canShare &&
+        navigator.canShare({ files: [file] })
+      ) {
+        try {
+          await navigator.share({
+            files: [file],
+            title: fileName,
+          });
+          return;
+        } catch (shareError) {
+          // ผู้ใช้กดยกเลิก share sheet เอง ไม่ต้อง fallback ไป download ซ้ำ
+          if ((shareError as Error)?.name === 'AbortError') {
+            return;
+          }
+          // เหตุผลอื่น (เช่น browser บล็อก) ให้ตกไปใช้วิธี download แบบเดิมด้านล่าง
+        }
+      }
+
+      // Fallback: desktop / Android หรือกรณี share ไม่ได้
+      // -> ดาวน์โหลดไฟล์ลงเครื่องโดยตรงผ่าน <a download>
       const link = document.createElement('a');
-      link.download = `บิล-${member?.name || 'สมาชิก'}-${bill?.date || ''}-${mode}.jpg`;
-      link.href = dataUrl;
+      link.download = fileName;
+      link.href = URL.createObjectURL(file);
       link.click();
+      URL.revokeObjectURL(link.href);
     } catch (error) {
       console.error('ไม่สามารถบันทึกรูปภาพได้:', error);
     } finally {
