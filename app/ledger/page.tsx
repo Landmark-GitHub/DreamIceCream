@@ -55,7 +55,9 @@ function LedgerContent() {
 
   const currentBill = bills.find((b) => b.id === selectedBillId);
   const currentMember = members.find((m) => m.id === selectedMemberId);
-  const previousOwed = getPreviousOwed(bills, selectedMemberId, selectedDate);
+  const previousOwed = currentBill
+  ? getPreviousOwed(bills, currentBill.memberId, currentBill.date, currentBill.id)
+  : 0;
 
   const billTotals = currentBill
     ? calculateBillTotals(currentBill, products, currentMember)
@@ -356,6 +358,7 @@ function LedgerContent() {
                   totalSales={billTotals.totalSales}
                   previousOwed={previousOwed}
                   onAmountPaidChange={(value) => handleBillFieldChange('amountPaid', value)}
+                  onAddMoneyChange={(value) =>  handleBillFieldChange('addMoney', value )}
                   onNotesChange={(value) => handleBillFieldChange('notes', value)}
                   onPayFull={handlePayFull}
                   onReturnGoods={() => setShowReturnConfirm(true)}

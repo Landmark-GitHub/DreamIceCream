@@ -89,6 +89,7 @@ export interface Bill {
   ice: string;
   icePrice: number;
   totalSales: number;
+  addMoney: number; // เพิ่มเงิน (กรณีลูกค้าจ่ายเกิน)
   amountPaid: number;
   amountOwed: number;
   previousOwed: number; // ยอดค้างชำระจากบิลก่อนหน้า (ถ้ามี)
@@ -291,6 +292,7 @@ export function createNewBill(memberId: string, memberName: string, products: Pr
     totalSales: 0,
     amountPaid: 0,
     amountOwed: 0,
+    addMoney: 0, // เพิ่มเงิน (กรณีลูกค้าจ่ายเกิน)
     previousOwed: previousBill?.amountOwed || 0,
     notes: '',
     status: 'draft',
@@ -400,7 +402,7 @@ export function calculateBillTotals(
   const iceDryPrice = dQuantity * dPrice;
 
   const totalSales = itemsTotal + planTotal + iceDryPrice;
-  const amountOwed = totalSales + (bill.previousOwed || 0) - (bill.amountPaid || 0);
+  const amountOwed = totalSales + (bill.previousOwed || 0) - (bill.amountPaid || 0) + (bill.addMoney || 0);
   // let amountOwed = totalSales - (bill.amountPaid || 0) + bill.previousOwed;
   // if (amountOwed < 0) {
   //   amountOwed = 0;

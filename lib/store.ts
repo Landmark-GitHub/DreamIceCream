@@ -467,6 +467,44 @@ export const useStore = create<Store>()((set, get) => ({
   },
 
   // ===== BILLS =====
+  // createBill: (memberId: string, date?: string) => {
+  //   let newlyCreatedBillId = '';
+
+  //   set((state) => {
+  //     const member = state.members.find((m) => m.id === memberId);
+  //     if (!member) return state;
+
+  //     const billDate = date || getToday();
+
+  //     const prevBill = state.bills
+  //       .filter((b) => b.memberId === memberId && b.status === 'completed')
+  //       .sort((a, b) => {
+  //         const dateDiff = new Date(b.date).getTime() - new Date(a.date).getTime();
+  //         if (dateDiff !== 0) return dateDiff;
+  //         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  //       })[0];
+
+  //     const bill = createNewBill(memberId, member.name, state.products, prevBill, billDate, member);
+
+  //     // ✅ ย้ายค่ายอดค้าง/เครดิตติดลบ จากบิลก่อนหน้าเข้า previousOwed
+  //     const previousOwed = prevBill ? prevBill.amountOwed : 0;
+  //     bill.previousOwed = previousOwed;
+
+  //     // คำนวณยอดรวมเริ่มต้นของบิลใหม่ (ถ้ารับ previousOwed ติดลบมา ยอดค้างบิลใหม่จะถูกหักลบอัตโนมัติ)
+  //     const { totalSales, amountOwed } = calculateBillTotals(bill, state.products, member);
+  //     bill.totalSales = totalSales;
+  //     bill.amountOwed = amountOwed;
+
+  //     newlyCreatedBillId = bill.id;
+
+  //     saveDocument('bills', bill.id, bill);
+  //     return { bills: [...state.bills, bill] };
+  //   });
+
+  //   return { id: newlyCreatedBillId };
+  // },
+
+  // ===== BILLS =====
   createBill: (memberId: string, date?: string) => {
     let newlyCreatedBillId = '';
 
@@ -476,6 +514,7 @@ export const useStore = create<Store>()((set, get) => ({
 
       const billDate = date || getToday();
 
+      // ✅ 1. หาบิลที่ completed ล่าสุดของสมาชิกคนนี้ (เรียงตาม date -> createdAt)
       const prevBill = state.bills
         .filter((b) => b.memberId === memberId && b.status === 'completed')
         .sort((a, b) => {
@@ -486,11 +525,11 @@ export const useStore = create<Store>()((set, get) => ({
 
       const bill = createNewBill(memberId, member.name, state.products, prevBill, billDate, member);
 
-      // ✅ ย้ายค่ายอดค้าง/เครดิตติดลบ จากบิลก่อนหน้าเข้า previousOwed
-      const previousOwed = prevBill ? prevBill.amountOwed : 0;
+      // ✅ 2. นำยอดค้างสุทธิล่าสุดจากบิลก่อนหน้า (รวมถึงบิลที่เพิ่งปิดไปในวันเดียวกัน เช่น 2,985 บาท) มาเป็น previousOwed
+      const previousOwed = prevBill ? (prevBill.amountOwed || 0) : 0;
       bill.previousOwed = previousOwed;
 
-      // คำนวณยอดรวมเริ่มต้นของบิลใหม่ (ถ้ารับ previousOwed ติดลบมา ยอดค้างบิลใหม่จะถูกหักลบอัตโนมัติ)
+      // ✅ 3. คำนวณยอดรวมเริ่มต้น
       const { totalSales, amountOwed } = calculateBillTotals(bill, state.products, member);
       bill.totalSales = totalSales;
       bill.amountOwed = amountOwed;
@@ -577,29 +616,70 @@ export const useStore = create<Store>()((set, get) => ({
 
   // store.ts
 
+  // confirmDayClose: (billId: string) => {
+  //   set((state) => {
+  //     let targetBill: Bill | null = null;
+  //     const bills = state.bills.map((b) => {
+  //       if (b.id === billId) {
+  //         const member = state.members.find((m) => m.id === b.memberId);
+  //         // ✅ คำนวณยอดขายและยอดค้างสุทธิ (รวมค่าติดลบ) สดๆ อีกครั้งก่อนปิดวัน
+  //         const { totalSales, amountOwed } = calculateBillTotals(b, state.products, member);
+
+  //         targetBill = {
+  //           ...b,
+  //           totalSales,
+  //           amountOwed, // บันทึกค่าติดลบ (-295) ลงในวัตถุบิลจริง
+  //           status: 'completed' as const,
+  //           dayClosed: true,
+  //           updatedAt: new Date().toISOString(),
+  //         };
+  //         return targetBill;
+  //       }
+  //       return b;
+  //     });
+
+  //     if (targetBill) saveDocument('bills', billId, targetBill); // ✅ ส่งค่าที่มีติดลบไป Firestore
+  //     return { bills };
+  //   });
+  // },
+
   confirmDayClose: (billId: string) => {
     set((state) => {
       let targetBill: Bill | null = null;
-      const bills = state.bills.map((b) => {
-        if (b.id === billId) {
-          const member = state.members.find((m) => m.id === b.memberId);
-          // ✅ คำนวณยอดขายและยอดค้างสุทธิ (รวมค่าติดลบ) สดๆ อีกครั้งก่อนปิดวัน
-          const { totalSales, amountOwed } = calculateBillTotals(b, state.products, member);
+      const currentBill = state.bills.find((b) => b.id === billId);
+      if (!currentBill) return state;
 
-          targetBill = {
-            ...b,
-            totalSales,
-            amountOwed, // บันทึกค่าติดลบ (-295) ลงในวัตถุบิลจริง
-            status: 'completed' as const,
-            dayClosed: true,
-            updatedAt: new Date().toISOString(),
-          };
-          return targetBill;
-        }
-        return b;
-      });
+      // ✅ ค้นหาบิลก่อนหน้าของสมาชิกคนนี้ที่ completed ไปแล้ว (ไม่รวมบิลปัจจุบันที่กำลังจะปิด)
+      const prevBill = state.bills
+        .filter((b) => b.memberId === currentBill.memberId && b.id !== billId && b.status === 'completed')
+        .sort((a, b) => {
+          const dateDiff = new Date(b.date).getTime() - new Date(a.date).getTime();
+          if (dateDiff !== 0) return dateDiff;
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        })[0];
 
-      if (targetBill) saveDocument('bills', billId, targetBill); // ✅ ส่งค่าที่มีติดลบไป Firestore
+      // อัปเดต previousOwed สดๆ ก่อนคำนวณ เพื่อให้ได้ยอดที่ต่อเนื่องกันเสมอ
+      const latestPreviousOwed = prevBill ? (prevBill.amountOwed || 0) : 0;
+      const billToCalculate = {
+        ...currentBill,
+        previousOwed: latestPreviousOwed,
+      };
+
+      const member = state.members.find((m) => m.id === currentBill.memberId);
+      const { totalSales, amountOwed } = calculateBillTotals(billToCalculate, state.products, member);
+
+      targetBill = {
+        ...billToCalculate,
+        totalSales,
+        amountOwed,
+        status: 'completed' as const,
+        dayClosed: true,
+        updatedAt: new Date().toISOString(),
+      };
+
+      const bills = state.bills.map((b) => (b.id === billId ? targetBill! : b));
+
+      if (targetBill) saveDocument('bills', billId, targetBill);
       return { bills };
     });
   },

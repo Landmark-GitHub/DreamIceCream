@@ -1,7 +1,7 @@
 'use client';
 
 import { Bill, Member, Product, calculateBillTotals } from '@/lib/types';
-import { Banknote, Lock } from 'lucide-react';
+import { Banknote, Lock, AlertCircle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,6 +15,7 @@ interface PaymentCardProps {
   totalSales: number;
   previousOwed: number; // รับค่ายอดค้าง/เครดิตเดิมเข้ามา
   onAmountPaidChange: (value: number) => void;
+  onAddMoneyChange?: (value: number) => void; // ✅ รับฟังก์ชันเปลี่ยนค่า addMoney
   onNotesChange: (value: string) => void;
   onPayFull: () => void;
   onReturnGoods: () => void;
@@ -28,6 +29,7 @@ export function PaymentCard({
   totalSales,
   previousOwed,
   onAmountPaidChange,
+  onAddMoneyChange,
   onNotesChange,
   onPayFull,
   onReturnGoods,
@@ -36,11 +38,18 @@ export function PaymentCard({
   const isDraft = bill.status === 'draft';
   const isCompleted = bill.status === 'completed';
 
+  const addMoney = bill.addMoney || 0;
+  const notes = bill.notes?.trim() || '';
+
+  // ตรวจสอบว่าถ้ามีการใส่ addMoney จะต้องมีหมายเหตุเสมอ
+  const isNotesRequired = addMoney !== 0;
+  const isNotesMissing = isNotesRequired && notes === '';
+
   // 1. คำนวณยอดขายวันนี้
   const { totalSales: calculatedSales } = calculateBillTotals(bill, products, member);
   
-  // 2. คำนวณยอดสุทธิที่ต้องจ่ายทั้งหมดจริง = (ยอดขายวันนี้ + ยอดค้างเดิม/เครดิต) - ยอดที่จ่ายวันนี้
-  const netAmountOwed = (totalSales + previousOwed) - (bill.amountPaid || 0);
+  // 2. คำนวณยอดสุทธิที่ต้องจ่ายทั้งหมดจริง = (ยอดขายวันนี้ + ยอดค้างเดิม + เงินเพิ่ม) - ยอดที่จ่ายวันนี้
+  const netAmountOwed = (totalSales + previousOwed + addMoney) - (bill.amountPaid || 0);
 
   return (
     <Card className="border-chart-2/30">
@@ -79,25 +88,44 @@ export function PaymentCard({
             </span>
           </div>
 
-          {/* ช่องกรอกเงินที่จ่ายวันนี้ */}
+          {/* ✅ ช่องกรอกเพิ่มเงิน (addMoney) */}
           <div>
-            <Label className="text-sm text-muted-foreground">ยอดจ่ายวันนี้ (บาท)</Label>
-            <div className="flex gap-2 mt-1">
+            <Label className="text-sm text-muted-foreground flex items-center justify-between">
+              <span>ค่าใช้จ่ายเพิ่มเติม</span>
+              {isNotesRequired && (
+                <span className="text-[11px] text-amber-600 font-medium">* ต้องระบุหมายเหตุ</span>
+              )}
+            </Label>
+            <div className="mt-1">
               <Input
                 type="number"
-                value={bill.amountPaid?.toString() || ''}
-                onChange={(e) => onAmountPaidChange(parseFloat(e.target.value) || 0)}
+                value={bill.addMoney !== undefined && bill.addMoney !== 0 ? bill.addMoney.toString() : ''}
+                onChange={(e) => onAddMoneyChange?.(parseFloat(e.target.value) || 0)}
                 placeholder="0"
                 disabled={isDraft || isCompleted}
               />
-              <Button
-                variant="outline"
-                onClick={onPayFull}
-                disabled={isDraft || isCompleted}
-              >
-                จ่ายครบ
-              </Button>
             </div>
+          </div>
+
+          {/* ช่องหมายเหตุ (บังคับเมื่อมี addMoney) */}
+          <div>
+            <div className="flex justify-between items-center">
+              <Label className="text-sm text-muted-foreground">
+                หมายเหตุ {isNotesRequired && <span className="text-destructive">*</span>}
+              </Label>
+              {isNotesMissing && (
+                <span className="text-xs text-destructive flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" /> กรุณาระบุเหตุผลที่เพิ่มเงิน
+                </span>
+              )}
+            </div>
+            <Input
+              value={bill.notes || ''}
+              onChange={(e) => onNotesChange(e.target.value)}
+              placeholder={isNotesRequired ? "กรุณาระบุเหตุผลการเพิ่มเงิน..." : "บันทึกเพิ่มเติม..."}
+              disabled={isCompleted}
+              className={cn("mt-1", isNotesMissing && "border-destructive focus-visible:ring-destructive")}
+            />
           </div>
 
           {/* ยอดค้างสุทธิรวมทั้งหมด (นำ netAmountOwed มาแสดง) */}
@@ -134,20 +162,35 @@ export function PaymentCard({
             </div>
           </div>
           
+          {/* ช่องกรอกเงินที่จ่ายวันนี้ */}
           <div>
-            <Label className="text-sm text-muted-foreground">หมายเหตุ</Label>
-            <Input
-              value={bill.notes || ''}
-              onChange={(e) => onNotesChange(e.target.value)}
-              placeholder="บันทึกเพิ่มเติม..."
-              disabled={isCompleted}
-              className="mt-1"
-            />
+            <Label className="text-sm text-muted-foreground">ยอดจ่ายวันนี้ (บาท)</Label>
+            <div className="flex gap-2 mt-1">
+              <Input
+                type="number"
+                value={bill.amountPaid !== undefined && bill.amountPaid !== 0 ? bill.amountPaid.toString() : ''}
+                onChange={(e) => onAmountPaidChange(parseFloat(e.target.value) || 0)}
+                placeholder="0"
+                disabled={isDraft || isCompleted}
+              />
+              <Button
+                variant="outline"
+                onClick={onPayFull}
+                disabled={isDraft || isCompleted}
+              >
+                จ่ายครบ
+              </Button>
+            </div>
           </div>
+
 
           {!isCompleted && (
             <div className="grid grid-rows-1 gap-2">
-              <Button onClick={onCloseDay} className="flex-1" disabled={isDraft}>
+              <Button 
+                onClick={onCloseDay} 
+                className="flex-1" 
+                disabled={isDraft || isNotesMissing}
+              >
                 <Lock className="w-4 h-4 mr-2" />
                 ปิดวัน (บันทึกยอด)
               </Button>

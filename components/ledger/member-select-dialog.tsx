@@ -13,9 +13,23 @@ interface MemberSelectDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   members: Member[];
-  selectedDate: string;
   onSelectMember: (memberId: string) => void;
 }
+
+// สีของแต่ละ Class
+const classColors: Record<string, string> = {
+  A: 'bg-blue-500/10 text-blue-600 border-blue-500/30 dark:text-blue-400',
+  In: 'bg-green-500/10 text-green-600 border-green-500/30 dark:text-green-400',
+  WalkIn: 'bg-orange-500/10 text-orange-600 border-orange-500/30 dark:text-orange-400',
+  Out: 'bg-purple-500/10 text-purple-600 border-purple-500/30 dark:text-purple-400',
+};
+
+const getClassColor = (className?: string) => {
+  return (
+    classColors[className ?? ''] ??
+    'bg-gray-500/10 text-gray-600 border-gray-500/30 dark:text-gray-400'
+  );
+};
 
 export function MemberSelectDialog({
   open,
@@ -35,10 +49,37 @@ export function MemberSelectDialog({
             <Button
               key={member.id}
               variant="outline"
-              className="w-full justify-start text-sm py-5"
+              className="
+                w-full justify-between
+                px-4 py-6
+                bg-card
+                hover:bg-muted/50
+                transition-colors
+              "
               onClick={() => onSelectMember(member.id)}
             >
-              {member.name}
+              {/* ชื่อสมาชิก */}
+              <span className="text-base font-semibold text-foreground">
+                {member.name}
+              </span>
+
+              {/* Class */}
+              {member.class && (
+                <span
+                  className={`
+                    min-w-[42px]
+                    rounded-md
+                    border
+                    px-3 py-1
+                    text-center
+                    text-sm
+                    font-bold
+                    ${getClassColor(member.class)}
+                  `}
+                >
+                  {member.class}
+                </span>
+              )}
             </Button>
           ))}
         </div>

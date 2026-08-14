@@ -65,14 +65,16 @@ export function getReturnProductTypes(products: Product[]): ProductType[] {
 export function getPreviousBill(
   bills: Bill[],
   memberId: string,
-  selectedDate: string
+  selectedDate: string,
+  currentBillId?: string // ✅ เพิ่ม currentBillId
 ): Bill | undefined {
   return bills
     .filter(
       (b) =>
         b.memberId === memberId &&
-        b.date < selectedDate &&
-        b.status === 'completed'
+        b.status === 'completed' &&
+        (!currentBillId || b.id !== currentBillId) && // ไม่เอาตัวเอง
+        b.date <= selectedDate // ✅ เปลี่ยนจาก < เป็น <= (รวมบิลที่ปิดแล้วของวันนี้ด้วย)
     )
     .sort((a, b) => {
       const dateDiff = b.date.localeCompare(a.date);
@@ -84,9 +86,10 @@ export function getPreviousBill(
 export function getPreviousOwed(
   bills: Bill[],
   memberId: string,
-  selectedDate: string
+  selectedDate: string,
+  currentBillId?: string
 ): number {
-  const previousBill = getPreviousBill(bills, memberId, selectedDate);
+  const previousBill = getPreviousBill(bills, memberId, selectedDate, currentBillId);
   return previousBill ? previousBill.amountOwed : 0;
 }
 
