@@ -181,7 +181,6 @@ export function LedgerHeader({
         open={showMemberSelectModal}
         onOpenChange={onMemberSelectOpenChange}
         members={activeMembers}
-        selectedDate={selectedDate}
         onSelectMember={onCreateBillForMember}
       />
 
