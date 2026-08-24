@@ -429,7 +429,7 @@ export function ProductTable({ bill, products, mode, readOnly, onItemChange }: P
                     <div className="w-full border-t border-dashed border-border/70 pt-1.5">
                       <Input
                         type="text"
-                        inputMode="numeric"
+                        inputMode="decimal"
                         pattern="[0-9]*"
                         autoComplete="off"
                         min="0"
