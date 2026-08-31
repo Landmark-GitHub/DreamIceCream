@@ -49,7 +49,7 @@ export function PaymentCard({
   const { totalSales: calculatedSales } = calculateBillTotals(bill, products, member);
   
   // 2. คำนวณยอดสุทธิที่ต้องจ่ายทั้งหมดจริง = (ยอดขายวันนี้ + ยอดค้างเดิม + เงินเพิ่ม) - ยอดที่จ่ายวันนี้
-  const netAmountOwed = (totalSales + previousOwed + addMoney) - (bill.amountPaid || 0);
+  const netAmountOwed = (Math.round(totalSales) + Math.round(previousOwed) +  Math.round(addMoney)) - (bill.amountPaid || 0);
 
   return (
     <Card className="border-chart-2/30">
