@@ -7,7 +7,7 @@ import { getToday } from '@/lib/types';
 import { AuthGuard } from '@/components/auth-guard';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ClipboardList, Settings, TrendingUp, Users, Database, LogOut, Shield, User, Receipt } from 'lucide-react';
+import { ClipboardList, Settings, TrendingUp, Users, Database, LogOut, Shield, User, Receipt, PenLine } from 'lucide-react';
 
 function HomeContent() {
   const router = useRouter();
@@ -137,7 +137,19 @@ function HomeContent() {
           {/* Main Actions Block */}
           <div className="mb-6">
             <h3 className="text-sm font-medium text-muted-foreground mb-3">การทำงานประจำวัน</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <Link href="/modework" className="block">
+                <Card className="hover:shadow-sm transition-all cursor-pointer hover:border-border/60 h-full border-primary/20 bg-primary/5">
+                  <CardContent className="p-5">
+                    <div className="w-11 h-11 rounded-lg bg-primary/10 flex items-center justify-center mb-3.5">
+                      <PenLine className="w-5 h-5 text-primary" />
+                    </div>
+                    <p className="text-sm font-medium text-foreground">Mode Work</p>
+                    <p className="text-xs text-muted-foreground mt-1">เขียนสต็อกด้วย Pencil</p>
+                  </CardContent>
+                </Card>
+              </Link>
+
               <Link href="/ledger" className="block">
                 <Card className="hover:shadow-sm transition-all cursor-pointer hover:border-border/60 h-full">
                   <CardContent className="p-5">
