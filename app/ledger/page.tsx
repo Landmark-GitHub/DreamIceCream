@@ -158,26 +158,6 @@ function LedgerContent() {
     updateBill(selectedBillId, { returnInputs: zeroInputs });
   }, [currentBill, selectedBillId, products, updateBill]);
 
-  // const handleConfirmDayClose = () => {
-  //   if (!currentBill) return;
-
-  //   const dProduct = products.find((p) => p.type === 'D');
-  //   const dItem = dProduct
-  //     ? currentBill.items.find((item) => item.productId === dProduct.id)
-  //     : null;
-  //   const dQuantity = dItem ? dItem.totalStock : 0;
-  //   const dPrice = dProduct ? getProductPrice(dProduct, currentMember) : 0;
-
-  //   updateBill(currentBill.id, {
-  //     icePrice: dQuantity * dPrice,
-  //     status: 'completed',
-  //   });
-
-  //   setShowCloseConfirm(false);
-  // };
-
-  // ledger/page.tsx
-
   const handleConfirmDayClose = () => {
     if (!currentBill) return;
 
@@ -316,18 +296,6 @@ function LedgerContent() {
               />
             )}
 
-            {mode === 'return' && (
-              <ReturnInputsCard
-                bill={currentBill}
-                products={products}
-                onUpdateReturnInput={handleUpdateReturnInput}
-                onSkipCheck={handleSkipCheck} // ไม่เช็คยอด (เหมือนเดิม)
-                onCloseDay={handleSetZeroInputs} // ปรับเป็นฟังก์ชัน ปิดยอด (ใส่ 0 ไม่ปิดวัน)
-                onReturnGoods={() => setShowReturnConfirm(true)}
-                isPaymentComplete={isPaymentComplete} // ส่งสถานะล็อกปุ่มคืนของ
-              />
-            )}
-
             {mode === 'checkout' && (
               <CheckoutSummaryCard
                 bill={currentBill}
@@ -345,6 +313,17 @@ function LedgerContent() {
 
             {mode === 'return' && (
               <>
+                <ReturnInputsCard
+                bill={currentBill}
+                products={products}
+                member={currentMember} 
+                totalSales={billTotals.totalSales}
+                onUpdateReturnInput={handleUpdateReturnInput}
+                onSkipCheck={handleSkipCheck} // ไม่เช็คยอด (เหมือนเดิม)
+                onCloseDay={handleSetZeroInputs} // ปรับเป็นฟังก์ชัน ปิดยอด (ใส่ 0 ไม่ปิดวัน)
+                onReturnGoods={() => setShowReturnConfirm(true)}
+                isPaymentComplete={isPaymentComplete} // ส่งสถานะล็อกปุ่มคืนของ
+                />
                 <ReturnSalesSummaryCard
                   bill={currentBill}
                   products={products}
