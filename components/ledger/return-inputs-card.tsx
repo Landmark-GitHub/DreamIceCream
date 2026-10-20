@@ -1,16 +1,19 @@
 'use client';
 
-import { Bill, Product, PRODUCT_TYPE_LABELS } from '@/lib/types';
-import { getCheckoutProductTypes } from '@/lib/ledger-utils';
+import { Bill, Product, Member, getMemberClass, PRODUCT_TYPE_LABELS } from '@/lib/types';
+import { getCheckoutProductTypes, getMemberPriceByClass, } from '@/lib/ledger-utils';
 import { Calculator } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Banknote, Lock } from 'lucide-react';
+import { AddonFeeRows } from './addon-fee-rows';
 
 interface ReturnInputsCardProps {
   bill: Bill;
   products: Product[];
+  member: Member | undefined;
+  totalSales: number;
   onUpdateReturnInput: (type: string, value: number) => void;
   onSkipCheck: () => void;
   onCloseDay: () => void;
@@ -21,6 +24,8 @@ interface ReturnInputsCardProps {
 export function ReturnInputsCard({
   bill,
   products,
+  member,
+  totalSales,
   onUpdateReturnInput,
   onSkipCheck,
   onCloseDay,
@@ -37,6 +42,8 @@ export function ReturnInputsCard({
     return ia - ib;
   });
   const isCompleted = bill.status === 'completed';
+  const memberClass = getMemberClass(member);
+
 
   return (
     <Card className="border-border">
@@ -107,7 +114,6 @@ export function ReturnInputsCard({
         </div>
 
         <div className="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-border">
-          {/* .div1: ไม่เช็คยอด */}
           <button
             type="button"
             disabled={isCompleted}
@@ -117,7 +123,7 @@ export function ReturnInputsCard({
             <span className="text-base leading-none">⚡ไม่เช็คยอด</span>
           </button>
 
-          {/* .div2: ปิดยอด (เปลี่ยน action เป็นใส่ค่า 0 และปุ่มไม่ล็อกด้วยสถานะ draft แล้ว) */}
+
           <button
             type="button"
             disabled={isCompleted}
@@ -127,7 +133,7 @@ export function ReturnInputsCard({
             <span className="text-base leading-none">🔒ปิดยอด</span>
           </button>
 
-          {/* .div3: คืนของ (เพิ่มเงื่อนไขล็อกปุ่มหากยังจ่ายเงินไม่ครบ) */}
+
           <button
             type="button"
             disabled={isCompleted || !isPaymentComplete} // 3. ปุ่มจะล็อกถ้าบิลสำเร็จแล้ว หรือยังจ่ายเงินไม่ครบตามสูตร
@@ -139,7 +145,25 @@ export function ReturnInputsCard({
           </button>
         </div>
 
+        {/* แพ็กเกจบ้าน / รถ / น้ำแข็งแห้ง ต่อท้ายปุ่มควบคุม */}
+        <div className="mt-4 space-y-2">
+          <AddonFeeRows
+            products={products}
+            bill={bill}
+            member={member}
+            variant="return"
+          />
+        </div>
+
+        <div className="flex justify-between items-center pt-3 border-t border-border mt-2">
+          <span className="font-semibold">ยอดเงินรวม</span>
+          <span className="text-3xl font-bold text-primary">
+            {Math.round(totalSales).toLocaleString()} บาท
+          </span>
+        </div>
+
       </CardContent>
     </Card>
   );
 }
+
