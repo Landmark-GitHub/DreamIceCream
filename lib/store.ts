@@ -38,6 +38,23 @@ import {
 } from 'firebase/firestore';
 
 // ===== INITIAL STATE HELPERS =====
+const getInitialAddons = (): Addon[] => {
+  const now = new Date().toISOString();
+  return [
+    { id: 'addon-car', name: 'Car', price: 0, active: true, createdAt: now, updatedAt: now },
+    { id: 'addon-home', name: 'Home', price: 0, active: true, createdAt: now, updatedAt: now },
+  ];
+};
+
+const getInitialMembershipPlans = (): MembershipPlan[] => {
+  const now = new Date().toISOString();
+  return [
+    { id: 'membership-plan-in', name: 'In', code: 'in', active: true, addonIds: ['addon-car', 'addon-home'], createdAt: now, updatedAt: now },
+    { id: 'membership-plan-out', name: 'Out', code: 'out', active: true, addonIds: [], createdAt: now, updatedAt: now },
+    { id: 'membership-plan-walkin', name: 'WalkIn', code: 'walkin', active: true, addonIds: [], createdAt: now, updatedAt: now },
+  ];
+};
+
 const getInitialProducts = (): Product[] => {
   const now = new Date().toISOString();
   return DEFAULT_PRODUCTS.map((p, index) => ({
@@ -99,8 +116,8 @@ const getDefaultUser = (): User => {
 
 const initialState: AppState = {
   members: [],
-  membershipPlans: [],
-  addons: [],
+  membershipPlans: getInitialMembershipPlans(),
+  addons: getInitialAddons(),
   products: getInitialProducts(),
   bills: [],
   dailySummaries: [],
@@ -199,8 +216,34 @@ async function loadFromFirestore(): Promise<AppState | null> {
       } as Member;
     });
 
-    const membershipPlans: MembershipPlan[] = membershipPlansSnap.docs.map((d) => ({ id: d.id, ...d.data() } as MembershipPlan));
-    const addons: Addon[] = addonsSnap.docs.map((d) => ({ id: d.id, ...d.data() } as Addon));
+    const membershipPlans: MembershipPlan[] = membershipPlansSnap.docs.length > 0
+      ? membershipPlansSnap.docs.map((d) => ({ id: d.id, ...d.data() } as MembershipPlan))
+      : getInitialMembershipPlans();
+    const addons: Addon[] = addonsSnap.docs.length > 0
+      ? addonsSnap.docs.map((d) => ({ id: d.id, ...d.data() } as Addon))
+      : getInitialAddons();
+
+    if (membershipPlansSnap.docs.length === 0) {
+      membershipPlans.forEach((plan) => saveDocument('membershipPlans', plan.id, plan));
+    }
+    const defaultPlans = getInitialMembershipPlans();
+    const defaultAddons = getInitialAddons();
+    defaultAddons.forEach((defaultAddon) => {
+      if (!addons.some((addon) => addon.id === defaultAddon.id)) {
+        addons.push(defaultAddon);
+        saveDocument('addons', defaultAddon.id, defaultAddon);
+      }
+    });
+    defaultPlans.forEach((defaultPlan) => {
+      const existing = membershipPlans.find((plan) => plan.id === defaultPlan.id);
+      if (!existing) {
+        membershipPlans.push(defaultPlan);
+        saveDocument('membershipPlans', defaultPlan.id, defaultPlan);
+      } else if (defaultPlan.id === 'membership-plan-in' && existing.addonIds.length === 0) {
+        existing.addonIds = defaultPlan.addonIds;
+        saveDocument('membershipPlans', existing.id, existing);
+      }
+    });
 
     let products: Product[] = productsSnap.docs.map((d) => ({
       id: d.id,

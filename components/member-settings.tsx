@@ -52,9 +52,9 @@ const defaultFormData: MemberFormData = {
   phone: '',
   address: '',
   class: 'In', // รองรับข้อมูลสมาชิกเดิม
-  membershipPlanId: '',
-  addonIds: [],
-  statusIn: { house: false, car: false },
+  membershipPlanId: 'membership-plan-in',
+  addonIds: ['addon-car', 'addon-home'],
+  statusIn: { house: true, car: true },
   statusOut: 'active',
 };
 
@@ -84,8 +84,8 @@ export function MemberSettings() {
       phone: member.phone || '',
       address: member.address || '',
       class: member.class || 'In', // รองรับสมาชิกเดิม
-      membershipPlanId: member.membershipPlanId || '',
-      addonIds: member.addonIds || [],
+      membershipPlanId: member.membershipPlanId || (member.class === 'Out' ? 'membership-plan-out' : member.class === 'WalkIn' ? 'membership-plan-walkin' : 'membership-plan-in'),
+      addonIds: member.addonIds || (member.statusIn?.house || member.statusIn?.car ? ['addon-car', 'addon-home'].filter((id) => id === 'addon-car' ? member.statusIn.car : member.statusIn.house) : []),
       statusIn: { ...member.statusIn },
       statusOut: member.statusOut,
     });
@@ -288,9 +288,9 @@ export function MemberSettings() {
                   setFormData({
                     ...formData,
                     membershipPlanId: value === 'legacy' ? '' : value,
-                    class: (plan?.code === 'out' ? 'Out' : plan?.code === 'walk-in' ? 'WalkIn' : 'In') as MemberClass,
+                    class: (plan?.code === 'out' ? 'Out' : plan?.code === 'walkin' || plan?.code === 'walk-in' ? 'WalkIn' : 'In') as MemberClass,
                     addonIds: plan ? formData.addonIds.filter((id) => plan.addonIds.includes(id)) : [],
-                    statusIn: plan?.code === 'in' ? formData.statusIn : { house: false, car: false },
+                    statusIn: plan?.code === 'in' ? { house: formData.addonIds.includes('addon-home'), car: formData.addonIds.includes('addon-car') } : { house: false, car: false },
                   });
                 }}
               >
@@ -316,6 +316,7 @@ export function MemberSettings() {
                         onCheckedChange={(checked) => setFormData({
                           ...formData,
                           addonIds: checked ? [...formData.addonIds, addon.id] : formData.addonIds.filter((id) => id !== addon.id),
+                          statusIn: { house: checked ? addon.id === 'addon-home' || formData.statusIn.house : addon.id === 'addon-home' ? false : formData.statusIn.house, car: checked ? addon.id === 'addon-car' || formData.statusIn.car : addon.id === 'addon-car' ? false : formData.statusIn.car },
                         })}
                       />
                       <span>{addon.name} ({addon.price.toLocaleString()} บาท)</span>
@@ -325,16 +326,7 @@ export function MemberSettings() {
               </div>
             )}
 
-            {!formData.membershipPlanId && (
-              <div className="flex flex-wrap gap-4 mt-1">
-                {(['In', 'Out', 'WalkIn'] as MemberClass[]).map((memberClass) => (
-                  <label key={memberClass} className="flex items-center gap-2 text-sm">
-                    <Checkbox checked={formData.class === memberClass} onCheckedChange={(checked) => checked && setFormData({ ...formData, class: memberClass, statusIn: memberClass === 'In' ? formData.statusIn : { house: false, car: false } })} />
-                    {memberClass}
-                  </label>
-                ))}
-              </div>
-            )}
+
 
             <div className="rounded-lg border bg-muted/20 p-3 space-y-3">
               <p className="text-sm font-medium">จัดการ Membership Plans และ Add-ons</p>
@@ -345,7 +337,7 @@ export function MemberSettings() {
               <div className="flex flex-col gap-1">
                 {membershipPlans.map((plan) => (
                   <div key={plan.id} className="flex items-center gap-2 text-xs">
-                    <button type="button" className={cn('flex-1 rounded border px-2 py-1 text-left', formData.membershipPlanId === plan.id && 'border-primary bg-primary/10')} onClick={() => setFormData({ ...formData, membershipPlanId: plan.id, class: 'In', addonIds: [] })}>{plan.name}</button>
+                    <button type="button" className={cn('flex-1 rounded border px-2 py-1 text-left', formData.membershipPlanId === plan.id && 'border-primary bg-primary/10')} onClick={() => setFormData({ ...formData, membershipPlanId: plan.id, class: plan.code === 'out' ? 'Out' : plan.code === 'walkin' || plan.code === 'walk-in' ? 'WalkIn' : 'In', addonIds: [...plan.addonIds], statusIn: { house: plan.addonIds.includes('addon-home'), car: plan.addonIds.includes('addon-car') } })}>{plan.name}</button>
                     <Button type="button" variant="ghost" size="icon" onClick={() => { setEditingPlanId(plan.id); setPlanDraft(plan.name); }} aria-label={`แก้ไข ${plan.name}`}><Pencil /></Button>
                     <Button type="button" variant="ghost" size="icon" onClick={() => deleteMembershipPlan(plan.id)} aria-label={`ลบ ${plan.name}`}><Trash2 /></Button>
                   </div>
