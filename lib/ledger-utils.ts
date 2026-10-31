@@ -17,7 +17,7 @@ const PRODUCT_TYPE_ORDER: Record<string, number> = {
 };
 
 export function sortProductTypes(types: string[]): string[] {
-  return [...types].sort((a, b) => {
+  return [...types].filter((type) => type !== 'D').sort((a, b) => {
     const orderA = PRODUCT_TYPE_ORDER[a] ?? 99;
     const orderB = PRODUCT_TYPE_ORDER[b] ?? 99;
     if (orderA !== orderB) {
@@ -56,10 +56,15 @@ export function getCheckoutProductTypes(products: Product[]): ProductType[] {
 }
 
 /** ประเภทสินค้าที่ใช้ใน return sales summary / print preview */
-export function getReturnProductTypes(products: Product[]): ProductType[] {
-  return Array.from(new Set(products.map((p) => p.type))).filter(
-    (type) => !EXCLUDED_SUMMARY_TYPES.includes(type)
-  );
+// export function getReturnProductTypes(products: Product[]): ProductType[] {
+//   return Array.from(new Set(products.map((p) => p.type))).filter(
+//     (type) => !EXCLUDED_SUMMARY_TYPES.includes(type)
+//   );
+// }
+
+export function getReturnProductTypes(products: Product[]): string[] {
+  const types = Array.from(new Set(products.map((p) => p.type)));
+  return sortProductTypes(types);
 }
 
 export function getPreviousBill(
