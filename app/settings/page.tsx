@@ -6,7 +6,6 @@ import { ChevronLeft } from 'lucide-react';
 import { MemberSettings } from '@/components/member-settings';
 import { ProductSettings } from '@/components/product-settings';
 import { UserSettings } from '@/components/user-settings';
-import { MembershipPlanSettings } from '@/components/membership-plan-settings';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AuthGuard } from '@/components/auth-guard';
 
@@ -29,10 +28,9 @@ function SettingsContent() {
 
       <div className="max-w-2xl mx-auto px-4 py-6">
         <Tabs defaultValue="members" className="w-full">
-          <TabsList className="grid w-full grid-cols-4 mb-6">
+          <TabsList className="grid w-full grid-cols-3 mb-6">
             <TabsTrigger value="members">สมาชิก</TabsTrigger>
             <TabsTrigger value="products">สินค้า</TabsTrigger>
-            <TabsTrigger value="plans">ประเภทสมาชิก</TabsTrigger>
             <TabsTrigger value="users">ผู้ใช้งาน</TabsTrigger>
           </TabsList>
 
@@ -42,10 +40,6 @@ function SettingsContent() {
 
           <TabsContent value="products">
             <ProductSettings />
-          </TabsContent>
-
-          <TabsContent value="plans">
-            <MembershipPlanSettings />
           </TabsContent>
 
           <TabsContent value="users">

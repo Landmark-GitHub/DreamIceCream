@@ -4,8 +4,6 @@ import { create } from 'zustand';
 import {
   AppState,
   Member,
-  MembershipPlan,
-  Addon,
   Product,
   Bill,
   DailySummary,
@@ -99,8 +97,6 @@ const getDefaultUser = (): User => {
 
 const initialState: AppState = {
   members: [],
-  membershipPlans: [],
-  addons: [],
   products: getInitialProducts(),
   bills: [],
   dailySummaries: [],
@@ -150,8 +146,6 @@ async function loadFromFirestore(): Promise<AppState | null> {
       expensesSnap,
       logsSnap,
       membersSnap,
-      membershipPlansSnap,
-      addonsSnap,
       productsSnap,
       billsSnap,
       usersSnap,
@@ -161,8 +155,6 @@ async function loadFromFirestore(): Promise<AppState | null> {
       getDocs(collection(db, 'expenses')),
       getDocs(collection(db, 'logs')),
       getDocs(collection(db, 'members')),
-      getDocs(collection(db, 'membershipPlans')),
-      getDocs(collection(db, 'addons')),
       getDocs(collection(db, 'products')),
       getDocs(collection(db, 'bills')),
       getDocs(collection(db, 'users')),
@@ -198,9 +190,6 @@ async function loadFromFirestore(): Promise<AppState | null> {
         statusIn: data.statusIn || { house: false, car: false },
       } as Member;
     });
-
-    const membershipPlans: MembershipPlan[] = membershipPlansSnap.docs.map((d) => ({ id: d.id, ...d.data() } as MembershipPlan));
-    const addons: Addon[] = addonsSnap.docs.map((d) => ({ id: d.id, ...d.data() } as Addon));
 
     let products: Product[] = productsSnap.docs.map((d) => ({
       id: d.id,
@@ -249,8 +238,6 @@ async function loadFromFirestore(): Promise<AppState | null> {
 
     return {
       members,
-      membershipPlans,
-      addons,
       products,
       bills,
       dailySummaries: [],
@@ -288,12 +275,6 @@ interface StoreActions {
 
   addMember: (name: string) => Member;
   updateMember: (id: string, updates: Partial<Member>) => void;
-  addMembershipPlan: (data: Omit<MembershipPlan, 'id' | 'createdAt' | 'updatedAt'>) => MembershipPlan;
-  updateMembershipPlan: (id: string, updates: Partial<MembershipPlan>) => void;
-  deleteMembershipPlan: (id: string) => void;
-  addAddon: (data: Omit<Addon, 'id' | 'createdAt' | 'updatedAt'>) => Addon;
-  updateAddon: (id: string, updates: Partial<Addon>) => void;
-  deleteAddon: (id: string) => void;
   deleteMember: (id: string) => void;
 
   addProduct: (data: Partial<Product>) => Product;
@@ -433,45 +414,6 @@ export const useStore = create<Store>()((set, get) => ({
   deleteMember: (id: string) => {
     set((state) => ({ members: state.members.filter((m) => m.id !== id) }));
     removeDocument('members', id);
-  },
-
-  addMembershipPlan: (data) => {
-    const now = new Date().toISOString();
-    const plan = { ...data, id: generateId(), createdAt: now, updatedAt: now };
-    set((state) => ({ membershipPlans: [...state.membershipPlans, plan] }));
-    saveDocument('membershipPlans', plan.id, plan);
-    return plan;
-  },
-  updateMembershipPlan: (id, updates) => {
-    set((state) => {
-      const membershipPlans = state.membershipPlans.map((plan) => plan.id === id ? { ...plan, ...updates, updatedAt: new Date().toISOString() } : plan);
-      const updated = membershipPlans.find((plan) => plan.id === id);
-      if (updated) saveDocument('membershipPlans', id, updated);
-      return { membershipPlans };
-    });
-  },
-  deleteMembershipPlan: (id) => {
-    set((state) => ({ membershipPlans: state.membershipPlans.filter((plan) => plan.id !== id) }));
-    removeDocument('membershipPlans', id);
-  },
-  addAddon: (data) => {
-    const now = new Date().toISOString();
-    const addon = { ...data, id: generateId(), createdAt: now, updatedAt: now };
-    set((state) => ({ addons: [...state.addons, addon] }));
-    saveDocument('addons', addon.id, addon);
-    return addon;
-  },
-  updateAddon: (id, updates) => {
-    set((state) => {
-      const addons = state.addons.map((addon) => addon.id === id ? { ...addon, ...updates, updatedAt: new Date().toISOString() } : addon);
-      const updated = addons.find((addon) => addon.id === id);
-      if (updated) saveDocument('addons', id, updated);
-      return { addons };
-    });
-  },
-  deleteAddon: (id) => {
-    set((state) => ({ addons: state.addons.filter((addon) => addon.id !== id) }));
-    removeDocument('addons', id);
   },
 
   // ===== PRODUCTS =====
