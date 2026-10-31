@@ -55,12 +55,13 @@ export function getCheckoutProductTypes(products: Product[]): ProductType[] {
   );
 }
 
-/** ประเภทสินค้าที่ใช้ใน return sales summary / print preview */
+// /** ประเภทสินค้าที่ใช้ใน return sales summary / print preview */
 // export function getReturnProductTypes(products: Product[]): ProductType[] {
 //   return Array.from(new Set(products.map((p) => p.type))).filter(
 //     (type) => !EXCLUDED_SUMMARY_TYPES.includes(type)
 //   );
 // }
+
 
 export function getReturnProductTypes(products: Product[]): string[] {
   const types = Array.from(new Set(products.map((p) => p.type)));
@@ -164,3 +165,4 @@ export function getBillTabsForDate(
       return acc;
     }, []);
 }
+
