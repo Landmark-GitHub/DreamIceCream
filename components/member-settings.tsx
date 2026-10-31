@@ -59,7 +59,11 @@ const defaultFormData: MemberFormData = {
 };
 
 export function MemberSettings() {
-  const { members, membershipPlans, addons, addMember, updateMember, deleteMember } = useStore();
+  const { members, membershipPlans, addons, addMember, updateMember, deleteMember, addMembershipPlan, updateMembershipPlan, deleteMembershipPlan, addAddon, updateAddon, deleteAddon } = useStore();
+  const [planDraft, setPlanDraft] = useState('');
+  const [addonDraft, setAddonDraft] = useState({ name: '', price: '' });
+  const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
+  const [editingAddonId, setEditingAddonId] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<Member | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Member | null>(null);
@@ -68,6 +72,8 @@ export function MemberSettings() {
   const handleOpenAdd = () => {
     setEditingMember(null);
     setFormData(defaultFormData);
+    setPlanDraft('');
+    setAddonDraft({ name: '', price: '' });
     setIsDialogOpen(true);
   };
 
@@ -84,6 +90,25 @@ export function MemberSettings() {
       statusOut: member.statusOut,
     });
     setIsDialogOpen(true);
+  };
+
+  const savePlan = () => {
+    const name = planDraft.trim();
+    if (!name) return;
+    if (editingPlanId) updateMembershipPlan(editingPlanId, { name });
+    else addMembershipPlan({ name, code: name.toLowerCase().replace(/[^a-z0-9]+/g, '-'), active: true, addonIds: [] });
+    setPlanDraft('');
+    setEditingPlanId(null);
+  };
+
+  const saveAddon = () => {
+    const name = addonDraft.name.trim();
+    if (!name) return;
+    const price = Math.max(0, Number(addonDraft.price) || 0);
+    if (editingAddonId) updateAddon(editingAddonId, { name, price });
+    else addAddon({ name, price, active: true });
+    setAddonDraft({ name: '', price: '' });
+    setEditingAddonId(null);
   };
 
   const handleSave = () => {
@@ -310,6 +335,51 @@ export function MemberSettings() {
                 ))}
               </div>
             )}
+
+            <div className="rounded-lg border bg-muted/20 p-3 space-y-3">
+              <p className="text-sm font-medium">จัดการ Membership Plans และ Add-ons</p>
+              <div className="flex gap-2">
+                <Input value={planDraft} onChange={(event) => setPlanDraft(event.target.value)} placeholder="ชื่อ Type ใหม่" aria-label="ชื่อ Type ใหม่" />
+                <Button type="button" size="sm" onClick={savePlan}>{editingPlanId ? 'บันทึก Type' : 'เพิ่ม Type'}</Button>
+              </div>
+              <div className="flex flex-col gap-1">
+                {membershipPlans.map((plan) => (
+                  <div key={plan.id} className="flex items-center gap-2 text-xs">
+                    <button type="button" className={cn('flex-1 rounded border px-2 py-1 text-left', formData.membershipPlanId === plan.id && 'border-primary bg-primary/10')} onClick={() => setFormData({ ...formData, membershipPlanId: plan.id, class: 'In', addonIds: [] })}>{plan.name}</button>
+                    <Button type="button" variant="ghost" size="icon" onClick={() => { setEditingPlanId(plan.id); setPlanDraft(plan.name); }} aria-label={`แก้ไข ${plan.name}`}><Pencil /></Button>
+                    <Button type="button" variant="ghost" size="icon" onClick={() => deleteMembershipPlan(plan.id)} aria-label={`ลบ ${plan.name}`}><Trash2 /></Button>
+                  </div>
+                ))}
+              </div>
+              {formData.membershipPlanId && (
+                <div className="rounded border p-2">
+                  <p className="mb-2 text-xs font-medium">Add-ons ที่ใช้ได้กับ Type นี้</p>
+                  <div className="flex flex-col gap-1">
+                    {addons.map((addon) => {
+                      const plan = membershipPlans.find((item) => item.id === formData.membershipPlanId);
+                      return <label key={addon.id} className="flex items-center gap-2 text-xs">
+                        <Checkbox checked={plan?.addonIds.includes(addon.id) ?? false} onCheckedChange={(checked) => plan && updateMembershipPlan(plan.id, { addonIds: checked ? [...plan.addonIds, addon.id] : plan.addonIds.filter((id) => id !== addon.id) })} />
+                        {addon.name} ({addon.price.toLocaleString()} บาท)
+                      </label>;
+                    })}
+                  </div>
+                </div>
+              )}
+              <div className="grid grid-cols-[1fr_90px_auto] gap-2">
+                <Input value={addonDraft.name} onChange={(event) => setAddonDraft({ ...addonDraft, name: event.target.value })} placeholder="ชื่อ Add-on" aria-label="ชื่อ Add-on" />
+                <Input type="number" min="0" value={addonDraft.price} onChange={(event) => setAddonDraft({ ...addonDraft, price: event.target.value })} placeholder="ราคา" aria-label="ราคา Add-on" />
+                <Button type="button" size="sm" onClick={saveAddon}>{editingAddonId ? 'บันทึก' : 'เพิ่ม'}</Button>
+              </div>
+              <div className="flex flex-col gap-1">
+                {addons.map((addon) => (
+                  <div key={addon.id} className="flex items-center gap-2 text-xs">
+                    <span className="flex-1">{addon.name} ({addon.price.toLocaleString()} บาท)</span>
+                    <Button type="button" variant="ghost" size="icon" onClick={() => { setEditingAddonId(addon.id); setAddonDraft({ name: addon.name, price: String(addon.price) }); }} aria-label={`แก้ไข ${addon.name}`}><Pencil /></Button>
+                    <Button type="button" variant="ghost" size="icon" onClick={() => deleteAddon(addon.id)} aria-label={`ลบ ${addon.name}`}><Trash2 /></Button>
+                  </div>
+                ))}
+              </div>
+            </div>
 
             {/* Status (เปลี่ยนชื่อจาก Status Out เดิม) */}
             <div className="space-y-2">
