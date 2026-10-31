@@ -99,6 +99,11 @@ export interface Bill {
   createdAt: string;
   updatedAt: string;
   returnInputs?: Record<string, number>;
+  /** ราคาบริการเสริม ณ ตอนสร้างบิล ป้องกันยอดย้อนหลังเปลี่ยนเมื่อแก้ Product */
+  addonPriceSnapshots?: {
+    house?: number;
+    car?: number;
+  };
 }
 
 // ===== DAILY SUMMARY =====
@@ -298,6 +303,14 @@ export function createNewBill(memberId: string, memberName: string, products: Pr
     status: 'draft',
     dayClosed: false,
     returnInputs: {},
+    addonPriceSnapshots: {
+      house: member?.statusIn?.house
+        ? products.find((product) => product.type === 'House')?.priceIn ?? 0
+        : 0,
+      car: member?.statusIn?.car
+        ? products.find((product) => product.type === 'Car')?.priceIn ?? 0
+        : 0,
+    },
     createdAt: now,
     updatedAt: now,
   };
@@ -310,7 +323,7 @@ export function createNewBill(memberId: string, memberName: string, products: Pr
 export function getMemberClass(member?: any | null): MemberClass {
   if (!member) return 'In';
 
-  // ดึงค่าจากฟิลด์ class หรือ memberClass (แปลงเป็น String เพื่อป้องกัน Error)
+  // ดึงค่าจากฟิลด์ class หรือ memberClass (แปลงเป็น String เพื่อป้��งกัน Error)
   const rawClass = String(member.class || member.memberClass || '').trim().toLowerCase();
 
   switch (rawClass) {
@@ -376,7 +389,12 @@ export function calculateBillTotals(
     const actualSoldGroup = totalStockGroup - returnedInputGroup;
 
     const baseProduct = typeProducts[0];
-    const price = baseProduct ? getProductPrice(baseProduct, memberClass) : 0;
+    const itemWithPrice = typeItems.find((item) => Number.isFinite(item.priceUsed));
+    const price = itemWithPrice
+      ? itemWithPrice.priceUsed
+      : baseProduct
+        ? getProductPrice(baseProduct, memberClass)
+        : 0;
 
     return grandTotal + (actualSoldGroup * price);
   }, 0);
@@ -385,12 +403,12 @@ export function calculateBillTotals(
   let planTotal = 0;
   if (memberClass === 'In' && member) {
     if (member.statusIn?.house === true) {
-      const houseProd = allProducts.find((p) => p.type === 'House');
-      planTotal += houseProd ? getProductPrice(houseProd, memberClass) : 0;
+    const houseProd = allProducts.find((p) => p.type === 'House');
+    planTotal += bill.addonPriceSnapshots?.house ?? (houseProd ? getProductPrice(houseProd, memberClass) : 0);
     }
     if (member.statusIn?.car === true) {
-      const carProd = allProducts.find((p) => p.type === 'Car');
-      planTotal += carProd ? getProductPrice(carProd, memberClass) : 0;
+    const carProd = allProducts.find((p) => p.type === 'Car');
+    planTotal += bill.addonPriceSnapshots?.car ?? (carProd ? getProductPrice(carProd, memberClass) : 0);
     }
   }
 

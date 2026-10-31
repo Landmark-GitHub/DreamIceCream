@@ -22,12 +22,14 @@ export function AddonFeeRows({ products, bill, member, variant }: AddonFeeRowsPr
   const dQuantity = dItem?.totalStock || 0;
 
   const getHousePrice = () =>
-    variant === 'checkout'
+    bill.addonPriceSnapshots?.house ??
+    (variant === 'checkout'
       ? getProductPrice(houseProd!, member)
-      : houseProd!.priceIn;
+      : houseProd!.priceIn);
 
   const getCarPrice = () =>
-    variant === 'checkout' ? getProductPrice(carProd!, member) : carProd!.priceIn;
+    bill.addonPriceSnapshots?.car ??
+    (variant === 'checkout' ? getProductPrice(carProd!, member) : carProd!.priceIn);
 
   const getDryIcePrice = () => {
     if (variant === 'checkout') return getProductPrice(dProduct!, member);
