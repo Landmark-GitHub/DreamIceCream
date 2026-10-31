@@ -4,8 +4,6 @@ import { create } from 'zustand';
 import {
   AppState,
   Member,
-  MembershipPlan,
-  Addon,
   Product,
   Bill,
   DailySummary,
@@ -38,23 +36,6 @@ import {
 } from 'firebase/firestore';
 
 // ===== INITIAL STATE HELPERS =====
-const getInitialAddons = (): Addon[] => {
-  const now = new Date().toISOString();
-  return [
-    { id: 'addon-car', name: 'Car', price: 0, active: true, createdAt: now, updatedAt: now },
-    { id: 'addon-home', name: 'Home', price: 0, active: true, createdAt: now, updatedAt: now },
-  ];
-};
-
-const getInitialMembershipPlans = (): MembershipPlan[] => {
-  const now = new Date().toISOString();
-  return [
-    { id: 'membership-plan-in', name: 'In', code: 'in', active: true, addonIds: ['addon-car', 'addon-home'], createdAt: now, updatedAt: now },
-    { id: 'membership-plan-out', name: 'Out', code: 'out', active: true, addonIds: [], createdAt: now, updatedAt: now },
-    { id: 'membership-plan-walkin', name: 'WalkIn', code: 'walkin', active: true, addonIds: [], createdAt: now, updatedAt: now },
-  ];
-};
-
 const getInitialProducts = (): Product[] => {
   const now = new Date().toISOString();
   return DEFAULT_PRODUCTS.map((p, index) => ({
@@ -116,8 +97,6 @@ const getDefaultUser = (): User => {
 
 const initialState: AppState = {
   members: [],
-  membershipPlans: getInitialMembershipPlans(),
-  addons: getInitialAddons(),
   products: getInitialProducts(),
   bills: [],
   dailySummaries: [],
@@ -167,8 +146,6 @@ async function loadFromFirestore(): Promise<AppState | null> {
       expensesSnap,
       logsSnap,
       membersSnap,
-      membershipPlansSnap,
-      addonsSnap,
       productsSnap,
       billsSnap,
       usersSnap,
@@ -178,8 +155,6 @@ async function loadFromFirestore(): Promise<AppState | null> {
       getDocs(collection(db, 'expenses')),
       getDocs(collection(db, 'logs')),
       getDocs(collection(db, 'members')),
-      getDocs(collection(db, 'membershipPlans')),
-      getDocs(collection(db, 'addons')),
       getDocs(collection(db, 'products')),
       getDocs(collection(db, 'bills')),
       getDocs(collection(db, 'users')),
@@ -214,35 +189,6 @@ async function loadFromFirestore(): Promise<AppState | null> {
         class: mClass || 'In',
         statusIn: data.statusIn || { house: false, car: false },
       } as Member;
-    });
-
-    const membershipPlans: MembershipPlan[] = membershipPlansSnap.docs.length > 0
-      ? membershipPlansSnap.docs.map((d) => ({ id: d.id, ...d.data() } as MembershipPlan))
-      : getInitialMembershipPlans();
-    const addons: Addon[] = addonsSnap.docs.length > 0
-      ? addonsSnap.docs.map((d) => ({ id: d.id, ...d.data() } as Addon))
-      : getInitialAddons();
-
-    if (membershipPlansSnap.docs.length === 0) {
-      membershipPlans.forEach((plan) => saveDocument('membershipPlans', plan.id, plan));
-    }
-    const defaultPlans = getInitialMembershipPlans();
-    const defaultAddons = getInitialAddons();
-    defaultAddons.forEach((defaultAddon) => {
-      if (!addons.some((addon) => addon.id === defaultAddon.id)) {
-        addons.push(defaultAddon);
-        saveDocument('addons', defaultAddon.id, defaultAddon);
-      }
-    });
-    defaultPlans.forEach((defaultPlan) => {
-      const existing = membershipPlans.find((plan) => plan.id === defaultPlan.id);
-      if (!existing) {
-        membershipPlans.push(defaultPlan);
-        saveDocument('membershipPlans', defaultPlan.id, defaultPlan);
-      } else if (defaultPlan.id === 'membership-plan-in' && existing.addonIds.length === 0) {
-        existing.addonIds = defaultPlan.addonIds;
-        saveDocument('membershipPlans', existing.id, existing);
-      }
     });
 
     let products: Product[] = productsSnap.docs.map((d) => ({
@@ -292,8 +238,6 @@ async function loadFromFirestore(): Promise<AppState | null> {
 
     return {
       members,
-      membershipPlans,
-      addons,
       products,
       bills,
       dailySummaries: [],
@@ -331,12 +275,6 @@ interface StoreActions {
 
   addMember: (name: string) => Member;
   updateMember: (id: string, updates: Partial<Member>) => void;
-  addMembershipPlan: (data: Omit<MembershipPlan, 'id' | 'createdAt' | 'updatedAt'>) => MembershipPlan;
-  updateMembershipPlan: (id: string, updates: Partial<MembershipPlan>) => void;
-  deleteMembershipPlan: (id: string) => void;
-  addAddon: (data: Omit<Addon, 'id' | 'createdAt' | 'updatedAt'>) => Addon;
-  updateAddon: (id: string, updates: Partial<Addon>) => void;
-  deleteAddon: (id: string) => void;
   deleteMember: (id: string) => void;
 
   addProduct: (data: Partial<Product>) => Product;
@@ -476,45 +414,6 @@ export const useStore = create<Store>()((set, get) => ({
   deleteMember: (id: string) => {
     set((state) => ({ members: state.members.filter((m) => m.id !== id) }));
     removeDocument('members', id);
-  },
-
-  addMembershipPlan: (data) => {
-    const now = new Date().toISOString();
-    const plan = { ...data, id: generateId(), createdAt: now, updatedAt: now };
-    set((state) => ({ membershipPlans: [...state.membershipPlans, plan] }));
-    saveDocument('membershipPlans', plan.id, plan);
-    return plan;
-  },
-  updateMembershipPlan: (id, updates) => {
-    set((state) => {
-      const membershipPlans = state.membershipPlans.map((plan) => plan.id === id ? { ...plan, ...updates, updatedAt: new Date().toISOString() } : plan);
-      const updated = membershipPlans.find((plan) => plan.id === id);
-      if (updated) saveDocument('membershipPlans', id, updated);
-      return { membershipPlans };
-    });
-  },
-  deleteMembershipPlan: (id) => {
-    set((state) => ({ membershipPlans: state.membershipPlans.filter((plan) => plan.id !== id) }));
-    removeDocument('membershipPlans', id);
-  },
-  addAddon: (data) => {
-    const now = new Date().toISOString();
-    const addon = { ...data, id: generateId(), createdAt: now, updatedAt: now };
-    set((state) => ({ addons: [...state.addons, addon] }));
-    saveDocument('addons', addon.id, addon);
-    return addon;
-  },
-  updateAddon: (id, updates) => {
-    set((state) => {
-      const addons = state.addons.map((addon) => addon.id === id ? { ...addon, ...updates, updatedAt: new Date().toISOString() } : addon);
-      const updated = addons.find((addon) => addon.id === id);
-      if (updated) saveDocument('addons', id, updated);
-      return { addons };
-    });
-  },
-  deleteAddon: (id) => {
-    set((state) => ({ addons: state.addons.filter((addon) => addon.id !== id) }));
-    removeDocument('addons', id);
   },
 
   // ===== PRODUCTS =====

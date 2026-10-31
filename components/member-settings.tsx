@@ -41,8 +41,6 @@ interface MemberFormData {
   phone: string;
   address: string;
   class: MemberClass;
-  membershipPlanId: string;
-  addonIds: string[];
   statusIn: { house: boolean; car: boolean };
   statusOut: MemberStatusOut; // นี่คือฟิลด์ Status (Active/Inactive)
 }
@@ -51,19 +49,13 @@ const defaultFormData: MemberFormData = {
   name: '',
   phone: '',
   address: '',
-  class: 'In', // รองรับข้อมูลสมาชิกเดิม
-  membershipPlanId: 'membership-plan-in',
-  addonIds: ['addon-car', 'addon-home'],
-  statusIn: { house: true, car: true },
+  class: 'In', // 2. ค่าเริ่มต้นเปลี่ยนเป็น 'In'
+  statusIn: { house: false, car: false },
   statusOut: 'active',
 };
 
 export function MemberSettings() {
-  const { members, membershipPlans, addons, addMember, updateMember, deleteMember, addMembershipPlan, updateMembershipPlan, deleteMembershipPlan, addAddon, updateAddon, deleteAddon } = useStore();
-  const [planDraft, setPlanDraft] = useState('');
-  const [addonDraft, setAddonDraft] = useState({ name: '', price: '' });
-  const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
-  const [editingAddonId, setEditingAddonId] = useState<string | null>(null);
+  const { members, addMember, updateMember, deleteMember } = useStore();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<Member | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Member | null>(null);
@@ -72,8 +64,6 @@ export function MemberSettings() {
   const handleOpenAdd = () => {
     setEditingMember(null);
     setFormData(defaultFormData);
-    setPlanDraft('');
-    setAddonDraft({ name: '', price: '' });
     setIsDialogOpen(true);
   };
 
@@ -83,32 +73,11 @@ export function MemberSettings() {
       name: member.name,
       phone: member.phone || '',
       address: member.address || '',
-      class: member.class || 'In', // รองรับสมาชิกเดิม
-      membershipPlanId: member.membershipPlanId || (member.class === 'Out' ? 'membership-plan-out' : member.class === 'WalkIn' ? 'membership-plan-walkin' : 'membership-plan-in'),
-      addonIds: member.addonIds || (member.statusIn?.house || member.statusIn?.car ? ['addon-car', 'addon-home'].filter((id) => id === 'addon-car' ? member.statusIn.car : member.statusIn.house) : []),
+      class: member.class || 'In', // ดึงจาก class ตรงๆ
       statusIn: { ...member.statusIn },
       statusOut: member.statusOut,
     });
     setIsDialogOpen(true);
-  };
-
-  const savePlan = () => {
-    const name = planDraft.trim();
-    if (!name) return;
-    if (editingPlanId) updateMembershipPlan(editingPlanId, { name });
-    else addMembershipPlan({ name, code: name.toLowerCase().replace(/[^a-z0-9]+/g, '-'), active: true, addonIds: [] });
-    setPlanDraft('');
-    setEditingPlanId(null);
-  };
-
-  const saveAddon = () => {
-    const name = addonDraft.name.trim();
-    if (!name) return;
-    const price = Math.max(0, Number(addonDraft.price) || 0);
-    if (editingAddonId) updateAddon(editingAddonId, { name, price });
-    else addAddon({ name, price, active: true });
-    setAddonDraft({ name: '', price: '' });
-    setEditingAddonId(null);
   };
 
   const handleSave = () => {
@@ -118,9 +87,7 @@ export function MemberSettings() {
       name: formData.name,
       phone: formData.phone,
       address: formData.address,
-      class: formData.class,
-      membershipPlanId: formData.membershipPlanId || undefined,
-      addonIds: formData.addonIds,
+      class: formData.class, // ส่งค่าฟิลด์ class ไปบันทึก
       statusIn: formData.class === 'In' ? formData.statusIn : { house: false, car: false },
       statusOut: formData.statusOut,
     };
@@ -279,99 +246,87 @@ export function MemberSettings() {
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="membership-plan">Membership Plan</Label>
-              <Select
-                value={formData.membershipPlanId || 'legacy'}
-                onValueChange={(value) => {
-                  const plan = membershipPlans.find((item) => item.id === value);
-                  setFormData({
-                    ...formData,
-                    membershipPlanId: value === 'legacy' ? '' : value,
-                    class: (plan?.code === 'out' ? 'Out' : plan?.code === 'walkin' || plan?.code === 'walk-in' ? 'WalkIn' : 'In') as MemberClass,
-                    addonIds: plan ? formData.addonIds.filter((id) => plan.addonIds.includes(id)) : [],
-                    statusIn: plan?.code === 'in' ? { house: formData.addonIds.includes('addon-home'), car: formData.addonIds.includes('addon-car') } : { house: false, car: false },
-                  });
-                }}
-              >
-                <SelectTrigger id="membership-plan"><SelectValue placeholder="เลือกประเภทสมาชิก" /></SelectTrigger>
-                <SelectContent>
-                  {membershipPlans.length === 0 ? (
-                    <SelectItem value="legacy">ประเภทเดิม (In / Out / WalkIn)</SelectItem>
-                  ) : membershipPlans.filter((plan) => plan.active).map((plan) => (
-                    <SelectItem key={plan.id} value={plan.id}>{plan.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            {/* Class (Checkbox) แทน Status In เดิมเพื่อเลือกประเภทกลุ่มสมาชิก */}
+
+            <div className="flex flex-wrap gap-4 mt-1">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="class-in"
+                  checked={formData.class === 'In'}
+                  onCheckedChange={(checked) => {
+                    if (checked) setFormData({ ...formData, class: 'In' });
+                  }}
+                />
+                <Label htmlFor="class-in" className="text-sm cursor-pointer">In</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="class-out"
+                  checked={formData.class === 'Out'}
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      setFormData({ 
+                        ...formData, 
+                        class: 'Out',
+                        statusIn: { house: false, car: false } 
+                      });
+                    }
+                  }}
+                />
+                <Label htmlFor="class-out" className="text-sm cursor-pointer">Out</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="class-workin"
+                  checked={formData.class === 'WalkIn'}
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      setFormData({ 
+                        ...formData, 
+                        class: 'WalkIn',
+                        statusIn: { house: false, car: false }
+                      });
+                    }
+                  }}
+                />
+                <Label htmlFor="class-workin" className="text-sm cursor-pointer">WalkIn</Label>
+              </div>
             </div>
 
-            {formData.membershipPlanId && (
-              <div className="space-y-2 pl-4 border-l-2 border-muted">
-                <Label className="text-xs text-muted-foreground">Add-ons / บริการเสริม</Label>
-                <div className="flex flex-col gap-2">
-                  {addons.filter((addon) => addon.active && membershipPlans.find((plan) => plan.id === formData.membershipPlanId)?.addonIds.includes(addon.id)).map((addon) => (
-                    <label key={addon.id} className="flex items-center gap-2 text-sm">
-                      <Checkbox
-                        checked={formData.addonIds.includes(addon.id)}
-                        onCheckedChange={(checked) => setFormData({
+            {/* เงื่อนไข: ถ้าเลือก Class เป็น 'in' เท่านั้น ถึงจะแสดงให้ติ๊ก รถ / บ้าน */}
+            {formData.class === 'In' && (
+              <div className="space-y-2 pl-4 border-l-2 border-muted animate-in fade-in duration-200">
+                <Label className="text-xs text-muted-foreground">รายละเอียดสถานะ In</Label>
+                <div className="flex gap-4">
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="house"
+                      checked={formData.statusIn.house}
+                      onCheckedChange={(checked) =>
+                        setFormData({
                           ...formData,
-                          addonIds: checked ? [...formData.addonIds, addon.id] : formData.addonIds.filter((id) => id !== addon.id),
-                          statusIn: { house: checked ? addon.id === 'addon-home' || formData.statusIn.house : addon.id === 'addon-home' ? false : formData.statusIn.house, car: checked ? addon.id === 'addon-car' || formData.statusIn.car : addon.id === 'addon-car' ? false : formData.statusIn.car },
-                        })}
-                      />
-                      <span>{addon.name} ({addon.price.toLocaleString()} บาท)</span>
-                    </label>
-                  ))}
+                          statusIn: { ...formData.statusIn, house: !!checked },
+                        })
+                      }
+                    />
+                    <Label htmlFor="house" className="text-sm cursor-pointer">บ้าน</Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="car"
+                      checked={formData.statusIn.car}
+                      onCheckedChange={(checked) =>
+                        setFormData({
+                          ...formData,
+                          statusIn: { ...formData.statusIn, car: !!checked },
+                        })
+                      }
+                    />
+                    <Label htmlFor="car" className="text-sm cursor-pointer">รถ</Label>
+                  </div>
                 </div>
               </div>
             )}
-
-
-
-            <div className="rounded-lg border bg-muted/20 p-3 space-y-3">
-              <p className="text-sm font-medium">จัดการ Membership Plans และ Add-ons</p>
-              <div className="flex gap-2">
-                <Input value={planDraft} onChange={(event) => setPlanDraft(event.target.value)} placeholder="ชื่อ Type ใหม่" aria-label="ชื่อ Type ใหม่" />
-                <Button type="button" size="sm" onClick={savePlan}>{editingPlanId ? 'บันทึก Type' : 'เพิ่ม Type'}</Button>
-              </div>
-              <div className="flex flex-col gap-1">
-                {membershipPlans.map((plan) => (
-                  <div key={plan.id} className="flex items-center gap-2 text-xs">
-                    <button type="button" className={cn('flex-1 rounded border px-2 py-1 text-left', formData.membershipPlanId === plan.id && 'border-primary bg-primary/10')} onClick={() => setFormData({ ...formData, membershipPlanId: plan.id, class: plan.code === 'out' ? 'Out' : plan.code === 'walkin' || plan.code === 'walk-in' ? 'WalkIn' : 'In', addonIds: [...plan.addonIds], statusIn: { house: plan.addonIds.includes('addon-home'), car: plan.addonIds.includes('addon-car') } })}>{plan.name}</button>
-                    <Button type="button" variant="ghost" size="icon" onClick={() => { setEditingPlanId(plan.id); setPlanDraft(plan.name); }} aria-label={`แก้ไข ${plan.name}`}><Pencil /></Button>
-                    <Button type="button" variant="ghost" size="icon" onClick={() => deleteMembershipPlan(plan.id)} aria-label={`ลบ ${plan.name}`}><Trash2 /></Button>
-                  </div>
-                ))}
-              </div>
-              {formData.membershipPlanId && (
-                <div className="rounded border p-2">
-                  <p className="mb-2 text-xs font-medium">Add-ons ที่ใช้ได้กับ Type นี้</p>
-                  <div className="flex flex-col gap-1">
-                    {addons.map((addon) => {
-                      const plan = membershipPlans.find((item) => item.id === formData.membershipPlanId);
-                      return <label key={addon.id} className="flex items-center gap-2 text-xs">
-                        <Checkbox checked={plan?.addonIds.includes(addon.id) ?? false} onCheckedChange={(checked) => plan && updateMembershipPlan(plan.id, { addonIds: checked ? [...plan.addonIds, addon.id] : plan.addonIds.filter((id) => id !== addon.id) })} />
-                        {addon.name} ({addon.price.toLocaleString()} บาท)
-                      </label>;
-                    })}
-                  </div>
-                </div>
-              )}
-              <div className="grid grid-cols-[1fr_90px_auto] gap-2">
-                <Input value={addonDraft.name} onChange={(event) => setAddonDraft({ ...addonDraft, name: event.target.value })} placeholder="ชื่อ Add-on" aria-label="ชื่อ Add-on" />
-                <Input type="number" min="0" value={addonDraft.price} onChange={(event) => setAddonDraft({ ...addonDraft, price: event.target.value })} placeholder="ราคา" aria-label="ราคา Add-on" />
-                <Button type="button" size="sm" onClick={saveAddon}>{editingAddonId ? 'บันทึก' : 'เพิ่ม'}</Button>
-              </div>
-              <div className="flex flex-col gap-1">
-                {addons.map((addon) => (
-                  <div key={addon.id} className="flex items-center gap-2 text-xs">
-                    <span className="flex-1">{addon.name} ({addon.price.toLocaleString()} บาท)</span>
-                    <Button type="button" variant="ghost" size="icon" onClick={() => { setEditingAddonId(addon.id); setAddonDraft({ name: addon.name, price: String(addon.price) }); }} aria-label={`แก้ไข ${addon.name}`}><Pencil /></Button>
-                    <Button type="button" variant="ghost" size="icon" onClick={() => deleteAddon(addon.id)} aria-label={`ลบ ${addon.name}`}><Trash2 /></Button>
-                  </div>
-                ))}
-              </div>
-            </div>
 
             {/* Status (เปลี่ยนชื่อจาก Status Out เดิม) */}
             <div className="space-y-2">

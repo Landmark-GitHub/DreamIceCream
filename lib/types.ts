@@ -26,31 +26,10 @@ export type MemberStatusWorkIn = 'working' | 'off' | 'leave';
 export type MemberClass = 'In' | 'Out' | 'WalkIn';
 
 
-export interface MembershipPlan {
-  id: string;
-  name: string;
-  code: string;
-  active: boolean;
-  addonIds: string[];
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface Addon {
-  id: string;
-  name: string;
-  price: number;
-  active: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
 export interface Member {
   id: string;
   name: string;
   class?: MemberClass;
-  membershipPlanId?: string;
-  addonIds?: string[];
   phone?: string;
   address?: string;
   statusIn: MemberStatusIn;
@@ -177,8 +156,6 @@ export interface HistoryLog {
 // ===== APP STATE =====
 export interface AppState {
   members: Member[];
-  membershipPlans: MembershipPlan[];
-  addons: Addon[];
   products: Product[];
   bills: Bill[];
   dailySummaries: DailySummary[];
@@ -208,7 +185,7 @@ export const DEFAULT_PRODUCTS: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>[]
   { name: 'ข้าวโพด', type: 'XL', category: 'XL', priceIn: 6, priceOut: 6, priceWalkIn: 140, sortOrder: 6 , imageUrl: 'https://cdn.phototourl.com/free/2026-06-16-0a7bc54d-6982-492e-bf3c-54a3df52e7d4.jpg' },
   { name: 'เผือก', type: 'XL', category: 'XL', priceIn: 6, priceOut: 6, priceWalkIn: 6, sortOrder: 7, imageUrl: 'https://cdn.phototourl.com/free/2026-06-16-0a7bc54d-6982-492e-bf3c-54a3df52e7d4.jpg' },
   { name: 'ชาเย็น', type: 'XL', category: 'XL', priceIn: 6, priceOut: 6, priceWalkIn: 6, sortOrder: 8, imageUrl: 'https://cdn.phototourl.com/free/2026-06-16-0a7bc54d-6982-492e-bf3c-54a3df52e7d4.jpg' },
-  { name: 'โอเล��้ยง', type: 'XL', category: 'XL', priceIn: 6, priceOut: 6, priceWalkIn: 6, sortOrder: 9 , imageUrl: 'https://cdn.phototourl.com/free/2026-06-16-0a7bc54d-6982-492e-bf3c-54a3df52e7d4.jpg' },
+  { name: 'โอเลี้ยง', type: 'XL', category: 'XL', priceIn: 6, priceOut: 6, priceWalkIn: 6, sortOrder: 9 , imageUrl: 'https://cdn.phototourl.com/free/2026-06-16-0a7bc54d-6982-492e-bf3c-54a3df52e7d4.jpg' },
   { name: 'ป๊อป', type: 'XL', category: 'XL', priceIn: 6, priceOut: 6, priceWalkIn: 6, sortOrder: 10 , imageUrl: 'https://cdn.phototourl.com/free/2026-06-29-2991ff28-b43f-4fb2-b922-8f528d8140dd.jpg' },
   { name: 'คาลิโป้', type: 'XL', category: 'XL', priceIn: 6, priceOut: 6, priceWalkIn: 6, sortOrder: 11 , imageUrl: 'https://cdn.phototourl.com/free/2026-06-16-0a7bc54d-6982-492e-bf3c-54a3df52e7d4.jpg' },
   { name: 'ทุเรียน', type: 'XL', category: 'XL', priceIn: 6, priceOut: 6, priceWalkIn: 6, sortOrder: 12 , imageUrl: 'https://cdn.phototourl.com/free/2026-06-16-0a7bc54d-6982-492e-bf3c-54a3df52e7d4.jpg' },
@@ -346,7 +323,7 @@ export function createNewBill(memberId: string, memberName: string, products: Pr
 export function getMemberClass(member?: any | null): MemberClass {
   if (!member) return 'In';
 
-  // ��ึง��่าจากฟิลด์ class หรือ memberClass (แปลงเป็น String เพื่อป้��งกัน Error)
+  // ดึงค่าจากฟิลด์ class หรือ memberClass (แปลงเป็น String เพื่อป้��งกัน Error)
   const rawClass = String(member.class || member.memberClass || '').trim().toLowerCase();
 
   switch (rawClass) {
