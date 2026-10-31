@@ -47,7 +47,16 @@ export function MembershipPlanSettings() {
           <div className="flex flex-col gap-2">
             {membershipPlans.map((plan) => (
               <div key={plan.id} className="flex items-center justify-between rounded-lg border p-3">
-                <div><p className="font-medium">{plan.name}</p><p className="text-xs text-muted-foreground">{plan.active ? 'ใช้งาน' : 'ปิดใช้งาน'}</p></div>
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium">{plan.name}</p>
+                  <p className="text-xs text-muted-foreground">{plan.active ? 'ใช้งาน' : 'ปิดใช้งาน'}</p>
+                  {addons.length > 0 && <div className="mt-2 flex flex-wrap gap-3">
+                    {addons.filter((addon) => addon.active).map((addon) => <label key={addon.id} className="flex items-center gap-1 text-xs">
+                      <input type="checkbox" checked={plan.addonIds.includes(addon.id)} onChange={(event) => updateMembershipPlan(plan.id, { addonIds: event.target.checked ? [...plan.addonIds, addon.id] : plan.addonIds.filter((id) => id !== addon.id) })} />
+                      {addon.name}
+                    </label>)}
+                  </div>}
+                </div>
                 <div className="flex gap-1">
                   <Button variant="ghost" size="icon" onClick={() => { setEditingPlanId(plan.id); setPlanName(plan.name); }} aria-label={`แก้ไข ${plan.name}`}><Pencil data-icon="inline-start" /></Button>
                   <Button variant="ghost" size="icon" onClick={() => deleteMembershipPlan(plan.id)} aria-label={`ลบ ${plan.name}`}><Trash2 data-icon="inline-start" /></Button>

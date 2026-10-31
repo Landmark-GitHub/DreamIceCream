@@ -41,6 +41,8 @@ interface MemberFormData {
   phone: string;
   address: string;
   class: MemberClass;
+  membershipPlanId: string;
+  addonIds: string[];
   statusIn: { house: boolean; car: boolean };
   statusOut: MemberStatusOut; // นี่คือฟิลด์ Status (Active/Inactive)
 }
@@ -49,13 +51,15 @@ const defaultFormData: MemberFormData = {
   name: '',
   phone: '',
   address: '',
-  class: 'In', // 2. ค่าเริ่มต้นเปลี่ยนเป็น 'In'
+  class: 'In', // รองรับข้อมูลสมาชิกเดิม
+  membershipPlanId: '',
+  addonIds: [],
   statusIn: { house: false, car: false },
   statusOut: 'active',
 };
 
 export function MemberSettings() {
-  const { members, addMember, updateMember, deleteMember } = useStore();
+  const { members, membershipPlans, addons, addMember, updateMember, deleteMember } = useStore();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<Member | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Member | null>(null);
@@ -73,7 +77,9 @@ export function MemberSettings() {
       name: member.name,
       phone: member.phone || '',
       address: member.address || '',
-      class: member.class || 'In', // ดึงจาก class ตรงๆ
+      class: member.class || 'In', // รองรับสมาชิกเดิม
+      membershipPlanId: member.membershipPlanId || '',
+      addonIds: member.addonIds || [],
       statusIn: { ...member.statusIn },
       statusOut: member.statusOut,
     });
@@ -87,7 +93,9 @@ export function MemberSettings() {
       name: formData.name,
       phone: formData.phone,
       address: formData.address,
-      class: formData.class, // ส่งค่าฟิลด์ class ไปบันทึก
+      class: formData.class,
+      membershipPlanId: formData.membershipPlanId || undefined,
+      addonIds: formData.addonIds,
       statusIn: formData.class === 'In' ? formData.statusIn : { house: false, car: false },
       statusOut: formData.statusOut,
     };
@@ -246,85 +254,60 @@ export function MemberSettings() {
               />
             </div>
 
-            {/* Class (Checkbox) แทน Status In เดิมเพื่อเลือกประเภทกลุ่มสมาชิก */}
-
-            <div className="flex flex-wrap gap-4 mt-1">
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="class-in"
-                  checked={formData.class === 'In'}
-                  onCheckedChange={(checked) => {
-                    if (checked) setFormData({ ...formData, class: 'In' });
-                  }}
-                />
-                <Label htmlFor="class-in" className="text-sm cursor-pointer">In</Label>
-              </div>
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="class-out"
-                  checked={formData.class === 'Out'}
-                  onCheckedChange={(checked) => {
-                    if (checked) {
-                      setFormData({ 
-                        ...formData, 
-                        class: 'Out',
-                        statusIn: { house: false, car: false } 
-                      });
-                    }
-                  }}
-                />
-                <Label htmlFor="class-out" className="text-sm cursor-pointer">Out</Label>
-              </div>
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="class-workin"
-                  checked={formData.class === 'WalkIn'}
-                  onCheckedChange={(checked) => {
-                    if (checked) {
-                      setFormData({ 
-                        ...formData, 
-                        class: 'WalkIn',
-                        statusIn: { house: false, car: false }
-                      });
-                    }
-                  }}
-                />
-                <Label htmlFor="class-workin" className="text-sm cursor-pointer">WalkIn</Label>
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="membership-plan">Membership Plan</Label>
+              <Select
+                value={formData.membershipPlanId || 'legacy'}
+                onValueChange={(value) => {
+                  const plan = membershipPlans.find((item) => item.id === value);
+                  setFormData({
+                    ...formData,
+                    membershipPlanId: value === 'legacy' ? '' : value,
+                    class: (plan?.code === 'out' ? 'Out' : plan?.code === 'walk-in' ? 'WalkIn' : 'In') as MemberClass,
+                    addonIds: plan ? formData.addonIds.filter((id) => plan.addonIds.includes(id)) : [],
+                    statusIn: plan?.code === 'in' ? formData.statusIn : { house: false, car: false },
+                  });
+                }}
+              >
+                <SelectTrigger id="membership-plan"><SelectValue placeholder="เลือกประเภทสมาชิก" /></SelectTrigger>
+                <SelectContent>
+                  {membershipPlans.length === 0 ? (
+                    <SelectItem value="legacy">ประเภทเดิม (In / Out / WalkIn)</SelectItem>
+                  ) : membershipPlans.filter((plan) => plan.active).map((plan) => (
+                    <SelectItem key={plan.id} value={plan.id}>{plan.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
-            {/* เงื่อนไข: ถ้าเลือก Class เป็น 'in' เท่านั้น ถึงจะแสดงให้ติ๊ก รถ / บ้าน */}
-            {formData.class === 'In' && (
-              <div className="space-y-2 pl-4 border-l-2 border-muted animate-in fade-in duration-200">
-                <Label className="text-xs text-muted-foreground">รายละเอียดสถานะ In</Label>
-                <div className="flex gap-4">
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id="house"
-                      checked={formData.statusIn.house}
-                      onCheckedChange={(checked) =>
-                        setFormData({
+            {formData.membershipPlanId && (
+              <div className="space-y-2 pl-4 border-l-2 border-muted">
+                <Label className="text-xs text-muted-foreground">Add-ons / บริการเสริม</Label>
+                <div className="flex flex-col gap-2">
+                  {addons.filter((addon) => addon.active && membershipPlans.find((plan) => plan.id === formData.membershipPlanId)?.addonIds.includes(addon.id)).map((addon) => (
+                    <label key={addon.id} className="flex items-center gap-2 text-sm">
+                      <Checkbox
+                        checked={formData.addonIds.includes(addon.id)}
+                        onCheckedChange={(checked) => setFormData({
                           ...formData,
-                          statusIn: { ...formData.statusIn, house: !!checked },
-                        })
-                      }
-                    />
-                    <Label htmlFor="house" className="text-sm cursor-pointer">บ้าน</Label>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id="car"
-                      checked={formData.statusIn.car}
-                      onCheckedChange={(checked) =>
-                        setFormData({
-                          ...formData,
-                          statusIn: { ...formData.statusIn, car: !!checked },
-                        })
-                      }
-                    />
-                    <Label htmlFor="car" className="text-sm cursor-pointer">รถ</Label>
-                  </div>
+                          addonIds: checked ? [...formData.addonIds, addon.id] : formData.addonIds.filter((id) => id !== addon.id),
+                        })}
+                      />
+                      <span>{addon.name} ({addon.price.toLocaleString()} บาท)</span>
+                    </label>
+                  ))}
                 </div>
+              </div>
+            )}
+
+            {!formData.membershipPlanId && (
+              <div className="flex flex-wrap gap-4 mt-1">
+                {(['In', 'Out', 'WalkIn'] as MemberClass[]).map((memberClass) => (
+                  <label key={memberClass} className="flex items-center gap-2 text-sm">
+                    <Checkbox checked={formData.class === memberClass} onCheckedChange={(checked) => checked && setFormData({ ...formData, class: memberClass, statusIn: memberClass === 'In' ? formData.statusIn : { house: false, car: false } })} />
+                    {memberClass}
+                  </label>
+                ))}
               </div>
             )}
 

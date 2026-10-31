@@ -49,6 +49,8 @@ export interface Member {
   id: string;
   name: string;
   class?: MemberClass;
+  membershipPlanId?: string;
+  addonIds?: string[];
   phone?: string;
   address?: string;
   statusIn: MemberStatusIn;
@@ -344,7 +346,7 @@ export function createNewBill(memberId: string, memberName: string, products: Pr
 export function getMemberClass(member?: any | null): MemberClass {
   if (!member) return 'In';
 
-  // ดึง��่าจากฟิลด์ class หรือ memberClass (แปลงเป็น String เพื่อป้��งกัน Error)
+  // ��ึง��่าจากฟิลด์ class หรือ memberClass (แปลงเป็น String เพื่อป้��งกัน Error)
   const rawClass = String(member.class || member.memberClass || '').trim().toLowerCase();
 
   switch (rawClass) {
