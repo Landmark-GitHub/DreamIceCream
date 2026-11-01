@@ -1,7 +1,7 @@
 'use client';
 
 import { Bill, Member, Product, getProductPrice, PRODUCT_TYPE_LABELS } from '@/lib/types';
-import { getCheckoutProductTypes } from '@/lib/ledger-utils';
+import { getReturnProductTypes } from '@/lib/ledger-utils';
 import { CheckCircle2, Lock, Package, Trash2, RotateCcw } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -33,30 +33,30 @@ export function CheckoutSummaryCard({
   onDeleteClick,
   onRevertToDraft,
 }: CheckoutSummaryCardProps) {
-  const productTypes = getCheckoutProductTypes(products);
+  const productTypes = getReturnProductTypes(products);
   const isCompleted = bill.status === 'completed';
   const isCheckout = bill.status === 'checkout';
   const isDraft = bill.status === 'draft';
 
   return (
-    <Card className="border-primary/30 bg-card">
-      <CardContent className="p-4">
+    <Card className="border-primary/30 bg-card shadow-md">
+      <CardContent className="p-5">
+        {/* ส่วนหัวการ์ด */}
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-            <Package className="w-5 h-5 text-primary" />
+          <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+            <Package className="w-6 h-6 text-primary" />
           </div>
           <div className="flex-1">
-            <h3 className="font-semibold text-foreground">สรุปยอดเบิก</h3>
-            <p className="text-xs text-muted-foreground">เก่า + ใหม่ = รวม × ราคา</p>
+            <h3 className="text-lg font-bold text-foreground">สรุปยอดเบิกสินค้า</h3>
           </div>
-          <div className="flex rounded-md border border-border overflow-hidden text-xs font-medium shrink-0">
+          <div className="flex rounded-lg border-2 border-primary/40 overflow-hidden text-sm font-bold shrink-0">
             <button
               onClick={() => onSummaryModeChange('type')}
               className={cn(
-                'px-2.5 py-1 transition-colors',
+                'px-3.5 py-2 transition-colors',
                 summaryMode === 'type'
                   ? 'bg-primary text-primary-foreground'
-                  : 'bg-background text-muted-foreground hover:bg-muted'
+                  : 'bg-background text-foreground hover:bg-muted'
               )}
             >
               ชนิด
@@ -64,10 +64,10 @@ export function CheckoutSummaryCard({
             <button
               onClick={() => onSummaryModeChange('all')}
               className={cn(
-                'px-2.5 py-1 transition-colors border-l border-border',
+                'px-3.5 py-2 transition-colors border-l-2 border-primary/40',
                 summaryMode === 'all'
                   ? 'bg-primary text-primary-foreground'
-                  : 'bg-background text-muted-foreground hover:bg-muted'
+                  : 'bg-background text-foreground hover:bg-muted'
               )}
             >
               ทั้งหมด
@@ -75,7 +75,8 @@ export function CheckoutSummaryCard({
           </div>
         </div>
 
-        <div className="pt-3 border-t border-border space-y-2">
+        {/* รายการสินค้าและวิธีคิด */}
+        <div className="pt-3 border-t-2 border-border space-y-3">
           {summaryMode === 'type'
             ? productTypes.map((type) => {
                 const typeProducts = products.filter((p) => p.type === type);
@@ -97,19 +98,19 @@ export function CheckoutSummaryCard({
                 return (
                   <div
                     key={type}
-                    className="flex justify-between items-center py-1.5 border-b border-border/40 last:border-0"
+                    className="flex justify-between items-center py-2.5 border-b border-border/60 last:border-0"
                   >
-                    <div className="flex items-baseline gap-2 min-w-0">
-                      <span className="font-medium text-lg">{typeLabel}</span>
-                      {/* <span className="text-xs text-muted-foreground/60 font-medium truncate">
-                        ({typeOriginalOld} + {typeNew}) = {typeTotal} × {price}
-                      </span> */}
+                    <div className="flex items-center gap-3 min-w-0 pr-2">
+                      <span className="font-bold text-lg text-foreground shrink-0">{typeLabel}</span>
+                      <span className="text-sm font-semibold text-muted-foreground whitespace-nowrap overflow-x-auto">
+                        {typeOriginalOld}&nbsp;&nbsp;&nbsp;+&nbsp;&nbsp;&nbsp;{typeNew}&nbsp;&nbsp;&nbsp;=&nbsp;&nbsp;&nbsp;{typeTotal}&nbsp;&nbsp;&nbsp;×&nbsp;&nbsp;&nbsp;{price}
+                      </span>
                     </div>
-                    <div className="flex items-baseline gap-1 shrink-0 pl-2">
-                      <span className="text-2xl font-bold text-primary">
+                    <div className="flex items-baseline gap-1 shrink-0">
+                      <span className="text-2xl font-black text-primary">
                         {(typeTotal * price).toLocaleString()}
                       </span>
-                      <span className="text-lg text-muted-foreground"> บาท</span>
+                      <span className="text-base font-bold text-muted-foreground">บาท</span>
                     </div>
                   </div>
                 );
@@ -128,19 +129,20 @@ export function CheckoutSummaryCard({
                   return (
                     <div
                       key={item.productId}
-                      className="flex justify-between items-center py-1.5 border-b border-border/40 last:border-0"
+                      className="flex justify-between items-center py-2.5 border-b border-border/60 last:border-0"
                     >
-                      <div className="flex items-baseline gap-2 min-w-0">
-                        <span className="font-medium text-base">{prod.name}</span>
-                        <span className="text-xs text-muted-foreground/60 font-medium truncate">
-                          ({item.oldStock} + {item.newStock}) = {item.totalStock} × {price}
+                      <div className="flex flex-col min-w-0 pr-2">
+                        <span className="font-bold text-lg text-foreground">{prod.name}</span>
+                        {/* แสดงวิธีคิดรายชิ้น */}
+                        <span className="text-sm font-semibold text-muted-foreground">
+                          ({item.oldStock} เก่า + {item.newStock} ใหม่) = {item.totalStock} ชิ้น × {price} บาท
                         </span>
                       </div>
-                      <div className="flex items-baseline gap-1 shrink-0 pl-2">
-                        <span className="text-xl font-bold text-primary">
+                      <div className="flex items-baseline gap-1 shrink-0">
+                        <span className="text-2xl font-black text-primary">
                           {(item.totalStock * price).toLocaleString()}
                         </span>
-                        <span className="text-sm text-muted-foreground"> บาท</span>
+                        <span className="text-base font-bold text-muted-foreground">บาท</span>
                       </div>
                     </div>
                   );
@@ -154,64 +156,69 @@ export function CheckoutSummaryCard({
           />
         </div>
 
-        <div className="flex justify-between items-center pt-3 border-t border-border mt-2">
-          <span className="text-sm text-muted-foreground">รวมจำนวนชิ้น</span>
+        {/* ยอดรวมชิ้น */}
+        <div className="flex justify-between items-center pt-4 border-t-2 border-border mt-3">
+          <span className="text-base font-bold text-muted-foreground">รวมจำนวนสินค้าทั้งหมด</span>
           <span>
-            <span className="text-xl font-bold text-foreground">{totalStock}</span>
-            <span className="text-xs text-muted-foreground ml-1">ชิ้น</span>
+            <span className="text-2xl font-black text-foreground">{totalStock}</span>
+            <span className="text-sm font-bold text-muted-foreground ml-1">ชิ้น</span>
           </span>
         </div>
 
+        {/* ยอดเงินรวมสุทธิ */}
         <div className="flex justify-between items-center pt-2">
-          <span className="font-semibold">ยอดเงินรวม</span>
-          <span className="text-3xl font-bold text-primary">
+          <span className="text-lg font-bold text-foreground">ยอดเงินรวมสุทธิ</span>
+          <span className="text-4xl font-black text-primary">
             {Math.round(totalSales).toLocaleString()} บาท
           </span>
         </div>
 
-        <div className="flex gap-2 mt-4">
+        {/* ปุ่มกดดำเนินการ */}
+        <div className="flex gap-2.5 mt-5">
           {isDraft && (
             <Button
               onClick={onConfirmCheckout}
-              className="flex-1 bg-primary hover:bg-primary/90"
+              className="flex-1 bg-primary hover:bg-primary/90 text-base font-bold py-6 shadow-md"
               disabled={totalStock === 0}
             >
-              <CheckCircle2 className="w-4 h-4 mr-2" />
-              ยืนยันการเบิก
+              <CheckCircle2 className="w-5 h-5 mr-2" />
+              ยืนยันการเบิกสินค้า
             </Button>
           )}
           {isCheckout && (
-            <div className="flex-1 text-center py-2.5 text-sm text-chart-2 bg-chart-2/10 rounded-lg font-medium">
-              <CheckCircle2 className="w-4 h-4 inline mr-1" />
-              เบิกสินค้าแล้ว
+            <div className="flex-1 text-center py-3 text-base text-chart-2 bg-chart-2/15 rounded-xl font-bold flex items-center justify-center">
+              <CheckCircle2 className="w-5 h-5 inline mr-2" />
+              เบิกสินค้าเรียบร้อยแล้ว
             </div>
           )}
           {isCompleted && (
-            <div className="flex-1 text-center py-2.5 text-sm text-muted-foreground bg-muted rounded-lg">
-              <Lock className="w-4 h-4 inline mr-1" />
-              ปิดวันแล้ว
+            <div className="flex-1 text-center py-3 text-base text-muted-foreground bg-muted rounded-xl font-bold flex items-center justify-center">
+              <Lock className="w-5 h-5 inline mr-2" />
+              ปิดวันแล้ว (ล็อกข้อมูล)
             </div>
           )}
           {isCheckout && onRevertToDraft && (
             <Button
               variant="outline"
-              size="icon"
+              size="default"
               onClick={onRevertToDraft}
               disabled={isCompleted}
-              className="shrink-0"
+              className="shrink-0 px-4 py-6 border-2"
               title="กลับไปแก้ไข (เปลี่ยนสถานะเป็นกำลังเบิก)"
             >
-              <RotateCcw className="w-4 h-4 text-orange-500" />
+              <RotateCcw className="w-5 h-5 text-orange-500 mr-1" />
+              <span className="font-bold text-sm">แก้ไข</span>
             </Button>
           )}
           <Button
             variant="outline"
-            size="icon"
+            size="default"
             onClick={onDeleteClick}
             disabled={isCompleted}
-            className="shrink-0"
+            className="shrink-0 px-4 py-6 border-2"
           >
-            <Trash2 className="w-4 h-4 text-destructive" />
+            <Trash2 className="w-5 h-5 text-destructive mr-1" />
+            <span className="font-bold text-sm text-destructive">ลบ</span>
           </Button>
         </div>
       </CardContent>
