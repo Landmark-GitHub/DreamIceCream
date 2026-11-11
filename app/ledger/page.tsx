@@ -324,12 +324,12 @@ function LedgerContent() {
                 onReturnGoods={() => setShowReturnConfirm(true)}
                 isPaymentComplete={isPaymentComplete} // ส่งสถานะล็อกปุ่มคืนของ
                 />
-                <ReturnSalesSummaryCard
+                {/* <ReturnSalesSummaryCard
                   bill={currentBill}
                   products={products}
                   member={currentMember}
                   totalSales={billTotals.totalSales}
-                />
+                /> */}
                 <PaymentCard
                   bill={currentBill}
                   products={products}
