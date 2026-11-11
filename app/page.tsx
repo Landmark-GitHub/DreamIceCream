@@ -138,7 +138,7 @@ function HomeContent() {
           <div className="mb-6">
             <h3 className="text-sm font-medium text-muted-foreground mb-3">การทำงานประจำวัน</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              <Link href="/modework" className="block">
+              {/* <Link href="/modework" className="block">
                 <Card className="hover:shadow-sm transition-all cursor-pointer hover:border-border/60 h-full border-primary/20 bg-primary/5">
                   <CardContent className="p-5">
                     <div className="w-11 h-11 rounded-lg bg-primary/10 flex items-center justify-center mb-3.5">
@@ -148,7 +148,7 @@ function HomeContent() {
                     <p className="text-xs text-muted-foreground mt-1">เขียนสต็อกด้วย Pencil</p>
                   </CardContent>
                 </Card>
-              </Link>
+              </Link> */}
 
               <Link href="/ledger" className="block">
                 <Card className="hover:shadow-sm transition-all cursor-pointer hover:border-border/60 h-full">
