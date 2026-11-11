@@ -81,38 +81,74 @@ export function ReturnInputsCard({
               PRODUCT_TYPE_LABELS[type as keyof typeof PRODUCT_TYPE_LABELS] || type;
 
             return (
-              <div key={type} className="grid grid-cols-12 items-center gap-2">
-                <Label className="col-span-6 text-sm font-medium text-muted-foreground truncate">
-                  {typeLabel}&nbsp;&nbsp;&nbsp;({typeOriginalOld}&nbsp;+&nbsp;{typeNew})
-                </Label>
-                <div className="col-span-6 flex items-center gap-2">
-                  <Input
-                    type="number"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    placeholder={`ระบบนับ: ${typeTotal}`}
-                    disabled={isCompleted || typeTotal === 0}
-                    max={typeTotal}
-                    min={0}
-                    className="text-right h-9"
-                    value={
-                      bill.returnInputs?.[type] != null
-                        ? bill.returnInputs[type]
-                        : ''
-                    }
-                    onChange={(e) => {
-                      let val =
-                        e.target.value === '' ? 0 : parseFloat(e.target.value) || 0;
-                      if (val < 0) val = 0;
-                      if (val > typeTotal) val = typeTotal;
-                      onUpdateReturnInput(type, val);
-                    }}
-                  />
-                  <span className="text-xs text-muted-foreground shrink-0">ชิ้น</span>
-                </div>
-              </div>
-            );
-          })}
+        //       <div key={type} className="grid grid-cols-12 items-center gap-2">
+        //         <Label className="col-span-6 text-sm font-medium text-muted-foreground truncate">
+        //           {typeLabel}&nbsp;&nbsp;&nbsp;({typeOriginalOld}&nbsp;+&nbsp;{typeNew})
+        //         </Label>
+        //         <div className="col-span-6 flex items-center gap-2">
+        //           <Input
+        //             type="number"
+        //             inputMode="numeric"
+        //             pattern="[0-9]*"
+        //             placeholder={`ระบบนับ: ${typeTotal}`}
+        //             disabled={isCompleted || typeTotal === 0}
+        //             max={typeTotal}
+        //             min={0}
+        //             className="text-right h-9"
+        //             value={
+        //               bill.returnInputs?.[type] != null
+        //                 ? bill.returnInputs[type]
+        //                 : ''
+        //             }
+        //             onChange={(e) => {
+        //               let val =
+        //                 e.target.value === '' ? 0 : parseFloat(e.target.value) || 0;
+        //               if (val < 0) val = 0;
+        //               if (val > typeTotal) val = typeTotal;
+        //               onUpdateReturnInput(type, val);
+        //             }}
+        //           />
+        //           <span className="text-xs text-muted-foreground shrink-0">ชิ้น</span>
+        //         </div>
+        //       </div>
+        //     );
+        //   })}
+        // </div>
+          <div key={type} className="grid grid-cols-12 items-center gap-2">
+            <Label className="col-span-4 text-sm font-medium text-muted-foreground truncate">
+              {typeLabel}
+            </Label>
+            <span className="col-span-2 text-sm text-muted-foreground text-center">
+              {typeOriginalOld}
+            </span>
+            <span className="col-span-2 text-sm text-muted-foreground text-center">
+              {typeNew}
+            </span>
+            <div className="col-span-4 flex items-center gap-2">
+              <Input
+                type="number"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                placeholder={`ระบบนับ: ${typeTotal}`}
+                disabled={isCompleted || typeTotal === 0}
+                max={typeTotal}
+                min={0}
+                className="text-right h-9"
+                value={
+                  bill.returnInputs?.[type] != null
+                    ? bill.returnInputs[type]
+                    : ''
+                }
+                onChange={(e) => {
+                  let val =
+                    e.target.value === '' ? 0 : parseFloat(e.target.value) || 0;
+                  if (val < 0) val = 0;
+                  if (val > typeTotal) val = typeTotal;
+                  onUpdateReturnInput(type, val);
+                }}
+              />
+              <span className="text-xs text-muted-foreground shrink-0">ชิ้น</span>
+            </div>
         </div>
 
         <div className="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-border">
