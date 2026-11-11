@@ -83,7 +83,7 @@ export function ReturnInputsCard({
             return (
               <div key={type} className="grid grid-cols-12 items-center gap-2">
                 <Label className="col-span-6 text-sm font-medium text-muted-foreground truncate">
-                  {typeLabel}  &nbsp  &nbsp({typeOriginalOld} &nbsp +  &nbsp {typeNew})
+                  {typeLabel}&nbsp;&nbsp;&nbsp;({typeOriginalOld}&nbsp;+&nbsp;{typeNew})
                 </Label>
                 <div className="col-span-6 flex items-center gap-2">
                   <Input
