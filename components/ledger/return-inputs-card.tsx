@@ -81,26 +81,31 @@ export function ReturnInputsCard({
               PRODUCT_TYPE_LABELS[type as keyof typeof PRODUCT_TYPE_LABELS] || type;
 
             return (
-              <div key={type} className="grid grid-cols-12 items-center gap-2">
-                <Label className="col-span-4 text-sm font-medium text-muted-foreground truncate">
-                  {typeLabel}
-                </Label>
-                <span className="col-span-2 text-sm text-muted-foreground text-center">
-                  {typeOriginalOld}
-                </span>
-                <span className="col-span-2 text-sm text-muted-foreground text-center">
-                  {typeNew}
-                </span>
-               <div className="col-span-4 flex items-center gap-2">
+              <div key={type} className="grid grid-cols-12 items-center gap-1.5 py-1.5 border-b border-gray-100 last:border-none">
+              {/* ชื่อสินค้า: ลดสัดส่วนเหลือ 3 คอลัมน์ */}
+              <Label className="col-span-3 text-sm font-medium text-muted-foreground truncate" title={typeLabel}>
+                {typeLabel}
+              </Label>
+            
+              {/* ตัวเลขเดิม: คอลัมน์ละ 2 (รวมเป็น 4) */}
+              <span className="col-span-2 text-xs sm:text-sm text-muted-foreground text-center">
+                {typeOriginalOld}
+              </span>
+              <span className="col-span-2 text-xs sm:text-sm text-muted-foreground text-center">
+                {typeNew}
+              </span>
+            
+              {/* ช่องกรอกข้อมูล: ขยายพื้นที่เป็น 5 คอลัมน์เพื่อให้ใส่ Input + หน่วย "ชิ้น" ได้สบายๆ */}
+              <div className="col-span-5 flex items-center justify-end gap-1">
                 <Input
                   type="number"
                   inputMode="numeric"
                   pattern="[0-9]*"
-                  placeholder={`ระบบนับ: ${typeTotal}`}
+                  placeholder={`${typeTotal}`} // ย่อ placeholder ให้สั้นลง หรือใส่แค่ตัวเลขยอดรวม
                   disabled={isCompleted || typeTotal === 0}
                   max={typeTotal}
                   min={0}
-                  className="text-right h-9"
+                  className="text-right h-8 text-sm px-2 w-full"
                   value={
                     bill.returnInputs?.[type] != null
                       ? bill.returnInputs[type]
@@ -108,18 +113,16 @@ export function ReturnInputsCard({
                   }
                   onChange={(e) => {
                     let val =
-                      e.target.value === '' ? 0 : parseFloat(e.target.value) || 0;
-                    if (val < 0) val = 0;
-                    if (val > typeTotal) val = typeTotal;
+                      e.target.value === '' ? '' : parseFloat(e.target.value);
+                    if (val !== '' && val < 0) val = 0;
+                    if (val !== '' && val > typeTotal) val = typeTotal;
                     onUpdateReturnInput(type, val);
                   }}
                 />
                 <span className="text-xs text-muted-foreground shrink-0">ชิ้น</span>
               </div>
-              </div>
-            );
-          })}
-        </div>
+            </div>
+
 
         <div className="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-border">
           <button
