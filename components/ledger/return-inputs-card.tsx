@@ -102,6 +102,36 @@ export function ReturnInputsCard({
                   <Input
                     type="number"
                     inputMode="numeric"
+                    placeholder={isCompleted ? '0' : `${typeTotal}`}
+                    disabled={isCompleted || typeTotal === 0}
+                    max={typeTotal}
+                    min={0}
+                    className="text-right h-9 text-sm px-2 w-full"
+                    value={
+                      isCompleted
+                        ? (bill.returnInputs?.[type] ?? 0)
+                        : (bill.returnInputs?.[type] ?? '')
+                    }
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                  
+                      if (raw === '') {
+                        onUpdateReturnInput(type, 0);
+                        return;
+                      }
+                  
+                      const parsed = parseFloat(raw);
+                      if (Number.isNaN(parsed)) return;
+                  
+                      onUpdateReturnInput(
+                        type,
+                        Math.min(Math.max(parsed, 0), typeTotal)
+                      );
+                    }}
+                  />
+                  {/* <Input
+                    type="number"
+                    inputMode="numeric"
                     placeholder={`${typeTotal}`}
                     disabled={isCompleted || typeTotal === 0}
                     max={typeTotal}
@@ -121,7 +151,7 @@ export function ReturnInputsCard({
                         Math.min(Math.max(parsed, 0), typeTotal)
                       );
                     }}
-                  />
+                  /> */}
                   <span className="text-xs text-muted-foreground shrink-0">ชิ้น</span>
                 </div>
               </div>
