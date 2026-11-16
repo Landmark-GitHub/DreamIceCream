@@ -1,12 +1,11 @@
 'use client';
 
 import { Bill, Product, Member, getMemberClass, PRODUCT_TYPE_LABELS } from '@/lib/types';
-import { getCheckoutProductTypes, getMemberPriceByClass, } from '@/lib/ledger-utils';
-import { Calculator } from 'lucide-react';
+import { getCheckoutProductTypes } from '@/lib/ledger-utils';
+import { Calculator, Lock } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Banknote, Lock } from 'lucide-react';
 import { AddonFeeRows } from './addon-fee-rows';
 
 interface ReturnInputsCardProps {
@@ -14,11 +13,11 @@ interface ReturnInputsCardProps {
   products: Product[];
   member: Member | undefined;
   totalSales: number;
-  onUpdateReturnInput: (type: string, value: number) => void;
+  onUpdateReturnInput: (type: string, value: number | undefined) => void;
   onSkipCheck: () => void;
   onCloseDay: () => void;
   onReturnGoods: () => void;
-  isPaymentComplete: boolean; // 1. เพิ่มการรับ Props ตัวนี้เข้ามา
+  isPaymentComplete: boolean;
 }
 
 export function ReturnInputsCard({
@@ -30,9 +29,9 @@ export function ReturnInputsCard({
   onSkipCheck,
   onCloseDay,
   onReturnGoods,
-  isPaymentComplete, // 2. ประกาศดึงไปใช้งาน
+  isPaymentComplete,
 }: ReturnInputsCardProps) {
-  const RETURN_TYPE_ORDER = ['XL', 'S', 'Coffee', 'Sandwich','Cup', 'Cone'];
+  const RETURN_TYPE_ORDER = ['XL', 'S', 'Coffee', 'Sandwich', 'Cup', 'Cone'];
   const productTypes = [...getCheckoutProductTypes(products)].sort((a, b) => {
     const ia = RETURN_TYPE_ORDER.indexOf(a);
     const ib = RETURN_TYPE_ORDER.indexOf(b);
@@ -44,11 +43,10 @@ export function ReturnInputsCard({
   const isCompleted = bill.status === 'completed';
   const memberClass = getMemberClass(member);
 
-
   return (
     <Card className="border-border">
       <CardContent className="p-4">
-
+        {/* หัวการ์ด */}
         <div className="flex items-center gap-3 mb-3">
           <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
             <Calculator className="w-5 h-5 text-primary" />
@@ -63,6 +61,7 @@ export function ReturnInputsCard({
           </div>
         </div>
 
+        {/* รายการแยกตามชนิด */}
         <div className="space-y-4 pt-2 border-t border-border">
           {productTypes.map((type) => {
             const typeProducts = products.filter(
@@ -81,7 +80,10 @@ export function ReturnInputsCard({
               PRODUCT_TYPE_LABELS[type as keyof typeof PRODUCT_TYPE_LABELS] || type;
 
             return (
-              <div key={type} className="grid grid-cols-12 items-center gap-1.5 py-1.5 border-b border-border last:border-none">
+              <div
+                key={type}
+                className="grid grid-cols-12 items-center gap-1.5 py-1.5 border-b border-border last:border-none"
+              >
                 <Label
                   className="col-span-3 text-sm font-medium text-muted-foreground truncate"
                   title={typeLabel}
@@ -96,59 +98,38 @@ export function ReturnInputsCard({
                   {typeNew}
                 </span>
 
-               <div className="col-span-5 flex items-center gap-1">
-                <Input
-                  type="number"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  placeholder={`ระบบนับ: ${typeTotal}`}
-                  disabled={isCompleted || typeTotal === 0}
-                  max={typeTotal}
-                  min={0}
-                  className="text-right h-9"
-                  value={
-                    bill.returnInputs?.[type] != null
-                      ? bill.returnInputs[type]
-                      : ''
-                  }
-                  onChange={(e) => {
-                    let val =
-                      e.target.value === '' ? 0 : parseFloat(e.target.value) || 0;
-                    if (val < 0) val = 0;
-                    if (val > typeTotal) val = typeTotal;
-                    onUpdateReturnInput(type, val);
-                  }}
-                />
-                <Input
-                  type="number"
-                  inputMode="numeric"
-                  placeholder={`${typeTotal}`}
-                  disabled={isCompleted || typeTotal === 0}
-                  max={typeTotal}
-                  min={0}
-                  className="text-right h-8 text-sm px-2 w-full"
-                  value={bill.returnInputs?.[type] ?? ''}
-                  onChange={(e) => {
-                    const raw = e.target.value;
-                    if (raw === '') {
-                      onUpdateReturnInput(type, null);
-                      return;
-                    }
-                    const parsed = parseFloat(raw);
-                    if (Number.isNaN(parsed)) return;
-                    onUpdateReturnInput(
-                      type,
-                      Math.min(Math.max(parsed, 0), typeTotal)
-                    );
-                  }}
-                />
-                <span className="text-xs text-muted-foreground shrink-0">ชิ้น</span>
-              </div>
+                <div className="col-span-5 flex items-center gap-1">
+                  <Input
+                    type="number"
+                    inputMode="numeric"
+                    placeholder={`${typeTotal}`}
+                    disabled={isCompleted || typeTotal === 0}
+                    max={typeTotal}
+                    min={0}
+                    className="text-right h-9 text-sm px-2 w-full"
+                    value={bill.returnInputs?.[type] ?? ''}
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      if (raw === '') {
+                        onUpdateReturnInput(type, undefined);
+                        return;
+                      }
+                      const parsed = parseFloat(raw);
+                      if (Number.isNaN(parsed)) return;
+                      onUpdateReturnInput(
+                        type,
+                        Math.min(Math.max(parsed, 0), typeTotal)
+                      );
+                    }}
+                  />
+                  <span className="text-xs text-muted-foreground shrink-0">ชิ้น</span>
+                </div>
               </div>
             );
           })}
         </div>
 
+        {/* ปุ่มควบคุม */}
         <div className="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-border">
           <button
             type="button"
@@ -159,7 +140,6 @@ export function ReturnInputsCard({
             <span className="text-base leading-none">⚡ไม่เช็คยอด</span>
           </button>
 
-
           <button
             type="button"
             disabled={isCompleted}
@@ -169,10 +149,9 @@ export function ReturnInputsCard({
             <span className="text-base leading-none">🔒ปิดยอด</span>
           </button>
 
-
           <button
             type="button"
-            disabled={isCompleted || !isPaymentComplete} // 3. ปุ่มจะล็อกถ้าบิลสำเร็จแล้ว หรือยังจ่ายเงินไม่ครบตามสูตร
+            disabled={isCompleted || !isPaymentComplete}
             onClick={onReturnGoods}
             className="col-span-2 flex items-center justify-center gap-1.5 px-3 py-2 bg-orange-500 hover:bg-orange-600 text-white font-medium rounded-md text-sm transition-colors shadow-sm disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
           >
@@ -181,7 +160,7 @@ export function ReturnInputsCard({
           </button>
         </div>
 
-        {/* แพ็กเกจบ้าน / รถ / น้ำแข็งแห้ง ต่อท้ายปุ่มควบคุม */}
+        {/* แพ็กเกจบ้าน / รถ / น้ำแข็งแห้ง */}
         <div className="mt-4 space-y-2">
           <AddonFeeRows
             products={products}
@@ -191,16 +170,14 @@ export function ReturnInputsCard({
           />
         </div>
 
+        {/* ยอดเงินรวม */}
         <div className="flex justify-between items-center pt-3 border-t border-border mt-2">
           <span className="font-semibold">ยอดเงินรวม</span>
           <span className="text-3xl font-bold text-primary">
             {Math.round(totalSales).toLocaleString()} บาท
           </span>
         </div>
-
       </CardContent>
     </Card>
   );
 }
-
-
