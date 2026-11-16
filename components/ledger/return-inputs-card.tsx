@@ -13,7 +13,7 @@ interface ReturnInputsCardProps {
   products: Product[];
   member: Member | undefined;
   totalSales: number;
-  onUpdateReturnInput: (type: string, value: number | undefined) => void;
+  onUpdateReturnInput: (type: string, value: number ) => void;
   onSkipCheck: () => void;
   onCloseDay: () => void;
   onReturnGoods: () => void;
