@@ -223,7 +223,7 @@ function LedgerContent() {
   }, [currentBill, products, currentMember, selectedBillId, updateBill, previousOwed]);
 
   const handleUpdateReturnInput = useCallback(
-    (type: string, value: number | undefined) => {
+    (type: string, value: number) => {
       if (!currentBill || !selectedBillId) return;
       updateBill(selectedBillId, {
         returnInputs: { ...currentBill.returnInputs, [type]: value },
