@@ -111,7 +111,7 @@ export function ReturnInputsCard({
                     onChange={(e) => {
                       const raw = e.target.value;
                       if (raw === '') {
-                        onUpdateReturnInput(type, undefined);
+                        onUpdateReturnInput(type);
                         return;
                       }
                       const parsed = parseFloat(raw);
